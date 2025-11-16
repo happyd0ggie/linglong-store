@@ -692,7 +692,7 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
 }
 
 /// 取消正在进行的应用安装
-pub async fn cancel_install_app(app_id: String) -> Result<String, String> {
+pub async fn cancel_install_app(app_handle: AppHandle, app_id: String) -> Result<String, String> {
     println!("========== [cancel_install_app] START ==========");
     println!("[cancel_install_app] app_id: {}", app_id);
     
@@ -875,6 +875,18 @@ pub async fn cancel_install_app(app_id: String) -> Result<String, String> {
                 })?;
                 processes.remove(&app_id);
                 println!("[cancel_install_app] Process removed from manager");
+            }
+            
+            // 发送取消事件通知前端
+            println!("[cancel_install_app] Sending install-cancelled event to frontend");
+            let cancel_event = serde_json::json!({
+                "appId": app_id,
+                "cancelled": true,
+                "message": "Installation cancelled by user"
+            });
+            
+            if let Err(e) = app_handle.emit("install-cancelled", cancel_event) {
+                println!("[cancel_install_app] Warning: Failed to emit install-cancelled event: {}", e);
             }
             
             println!("========== [cancel_install_app] END ==========");

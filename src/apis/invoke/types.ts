@@ -25,3 +25,10 @@ export interface InstallProgress {
   percentage: number; // 百分比数值 (0-100)
   status: string; // 状态描述
 }
+
+// 安装取消事件
+export interface InstallCancelled {
+  appId: string; // 应用ID
+  cancelled: boolean; // 是否已取消
+  message: string; // 取消消息
+}

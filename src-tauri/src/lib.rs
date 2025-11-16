@@ -74,9 +74,9 @@ async fn install_app(
 }
 
 #[tauri::command]
-async fn cancel_install(app_id: String) -> Result<String, String> {
+async fn cancel_install(app_handle: tauri::AppHandle, app_id: String) -> Result<String, String> {
     println!("[cancel_install] Command invoked: app_id={}", app_id);
-    let result = cancel_install_app(app_id.clone()).await;
+    let result = cancel_install_app(app_handle, app_id.clone()).await;
     println!("[cancel_install] Command result for {}: {:?}", app_id, result);
     result
 }

@@ -6,7 +6,7 @@ import styles from './index.module.scss'
 import goBack from '@/assets/icons/go_back.svg'
 import DefaultIcon from '@/assets/linyaps.svg'
 import type { InstalledApp, InstallProgress } from '@/apis/invoke/types'
-import { searchVersions, uninstallApp, runApp, installApp, onInstallProgress } from '@/apis/invoke'
+import { searchVersions, uninstallApp, runApp, installApp, onInstallProgress, onInstallCancelled } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useDownloadConfigStore } from '@/stores/appConfig'
 interface VersionInfo {
@@ -48,13 +48,16 @@ const AppDetail = () => {
     return app
   }, [app, installedApps])
 
-  // 设置安装进度监听器
+  // 设置安装进度监听器和取消事件监听器
   useEffect(() => {
-    let unlisten: (() => void) | null = null
+    let unlistenProgress: (() => void) | null = null
+    let unlistenCancel: (() => void) | null = null
 
     const setupListener = async() => {
       console.log('[useEffect] Setting up install progress listener for appId:', currentApp?.appId)
-      unlisten = await onInstallProgress((progress) => {
+
+      // 监听安装进度
+      unlistenProgress = await onInstallProgress((progress) => {
         console.log('[useEffect] Install progress received:', progress)
         if (progress.appId === currentApp?.appId) {
           console.log('[useEffect] AppId matched! Updating state with:', progress)
@@ -67,6 +70,17 @@ const AppDetail = () => {
           console.log('[useEffect] AppId not matched. Expected:', currentApp?.appId, 'Got:', progress.appId)
         }
       })
+
+      // 监听安装取消事件
+      unlistenCancel = await onInstallCancelled((event) => {
+        console.log('[useEffect] Install cancelled event received:', event)
+        if (event.appId === currentApp?.appId) {
+          console.log('[useEffect] Installation cancelled for current app, resetting state')
+          setIsInstalling(false)
+          setInstallProgress(null)
+        }
+      })
+
       console.log('[useEffect] Listener setup complete')
     }
 
@@ -74,12 +88,20 @@ const AppDetail = () => {
 
     // 组件卸载时清理监听器
     return () => {
-      console.log('[useEffect] Cleaning up listener')
-      if (unlisten) {
-        unlisten()
+      console.log('[useEffect] Cleaning up listeners')
+      if (unlistenProgress) {
+        unlistenProgress()
+      }
+      if (unlistenCancel) {
+        unlistenCancel()
       }
     }
   }, [currentApp?.appId])
+
+  // 检查应用是否已安装
+  const isAppInstalled = useMemo(() => {
+    return versions.length > 0
+  }, [versions])
 
   const loadVersions = async() => {
     if (!currentApp?.appId) {
@@ -306,10 +328,10 @@ const AppDetail = () => {
                   loading={isInstalling}
                   disabled={isInstalling}
                 >
-                  {isInstalling ? '安装中...' : '安装新版本'}
+                  {isInstalling ? '安装中...' : (isAppInstalled ? '安装' : '安装')}
                 </Button>
                 {(() => {
-                  console.log('[Render] isInstalling:', isInstalling, 'installProgress:', installProgress)
+                  console.log('[Render] isInstalling:', isInstalling, 'installProgress:', installProgress, 'isAppInstalled:', isAppInstalled)
                   return null
                 })()}
                 {isInstalling && installProgress && (

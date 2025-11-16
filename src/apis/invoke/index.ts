@@ -134,3 +134,31 @@ export const onInstallProgress = async(
     callback(event.payload)
   })
 }
+
+/**
+ * 监听安装取消事件
+ * @param callback - 取消回调函数
+ * @returns Promise<UnlistenFn> 取消监听的函数
+ *
+ * @example
+ * ```typescript
+ * // 开始监听
+ * const unlisten = await onInstallCancelled((event) => {
+ *   console.log(`Installation cancelled for: ${event.appId}`)
+ * })
+ *
+ * // 取消监听
+ * unlisten()
+ * ```
+ */
+export const onInstallCancelled = async(
+  callback: (event: { appId: string; cancelled: boolean; message: string }) => void,
+): Promise<UnlistenFn> => {
+  return await listen<{ appId: string; cancelled: boolean; message: string }>(
+    'install-cancelled',
+    (event) => {
+      console.log('[onInstallCancelled] Received event:', event.payload)
+      callback(event.payload)
+    },
+  )
+}
