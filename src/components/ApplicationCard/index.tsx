@@ -22,6 +22,7 @@ const ApplicationCard = ({
   operateId = OperateType.INSTALL,
   options = {} as AppMainDto,
   loading = false,
+  onUninstall,
 }: ApplicationCardProps) => {
   const navigate = useNavigate()
 
@@ -57,7 +58,12 @@ const ApplicationCard = ({
   // 处理操作按钮点击
   const handleOperateClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
     e.stopPropagation() // 阻止事件冒泡到卡片点击事件
-  }, [operateId])
+
+    // 如果是卸载操作且提供了回调函数，调用卸载
+    if (operateId === OperateType.UNINSTALL && onUninstall) {
+      onUninstall(options)
+    }
+  }, [operateId, onUninstall, options])
 
   return (
     <div

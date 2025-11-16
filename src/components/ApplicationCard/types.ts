@@ -20,6 +20,8 @@ export interface ApplicationCardProps {
   options?: API.APP.AppMainDto
   /** 加载状态 */
   loading?: boolean
+  /** 卸载回调函数 */
+  onUninstall?: (app: API.APP.AppMainDto) => void
 }
 
 // 导出操作类型常量，方便外部使用

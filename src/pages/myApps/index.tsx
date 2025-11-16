@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
-import { Empty } from 'antd'
+import { Empty, Modal, message } from 'antd'
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useConfigStore } from '@/stores/appConfig'
 import type { InstalledApp } from '@/apis/invoke/types'
+import { uninstallApp } from '@/apis/invoke'
 
 const MyApplications = () => {
   const {
@@ -17,6 +18,7 @@ const MyApplications = () => {
   const { showBaseService } = useConfigStore()
   const [mergedApps, setMergedApps] = useState<InstalledApp[]>([])
   const listRef = useRef<HTMLDivElement>(null)
+  const [uninstallingAppId, setUninstallingAppId] = useState<string | null>(null)
 
   useEffect(() => {
     // 加载已安装应用列表
@@ -82,10 +84,30 @@ const MyApplications = () => {
     return 0
   }
 
-  // const handleUninstall = (_app: InstalledApp) => {
-  //   message.info('卸载功能开发中...')
-  //   // TODO: 实现卸载逻辑
-  // }
+  // 处理卸载操作
+  const handleUninstall = (app: InstalledApp) => {
+    Modal.confirm({
+      title: '确认卸载',
+      content: `确定要卸载 ${app.zhName || app.name || app.appId} 的版本 ${app.version} 吗？`,
+      okText: '确定',
+      cancelText: '取消',
+      onOk: async() => {
+        setUninstallingAppId(app.appId)
+        try {
+          await uninstallApp(app.appId, app.version)
+          message.success('卸载成功')
+
+          // 重新获取已安装应用列表
+          await fetchInstalledApps(showBaseService)
+        } catch (error) {
+          console.error('[handleUninstall] 卸载失败:', error)
+          message.error(`卸载失败: ${error}`)
+        } finally {
+          setUninstallingAppId(null)
+        }
+      },
+    })
+  }
 
   if (error) {
     return (
@@ -103,7 +125,15 @@ const MyApplications = () => {
       {mergedApps.length > 0 ? <div className={styles.applicationList}>
         {
           mergedApps.map((item, index) => {
-            return <ApplicationCard key={`${item.appId}_${index}`} options={item} operateId={0} />
+            return (
+              <ApplicationCard
+                key={`${item.appId}_${index}`}
+                options={item}
+                operateId={0}
+                loading={uninstallingAppId === item.appId}
+                onUninstall={handleUninstall}
+              />
+            )
           })
         }
       </div> : <Empty description="暂无已安装应用" />}
