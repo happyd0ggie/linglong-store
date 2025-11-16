@@ -4,6 +4,7 @@ import { useGlobalStore, useSearchStore } from '@/stores/global'
 import { getSearchAppList } from '@/apis/apps/index'
 import { useState, useEffect, useRef } from 'react'
 import { generateEmptyCards } from './utils'
+import { useAppInstall } from '@/hooks/useAppInstall'
 const defaultPageSize = 10 // 每页显示数量
 
 type AppInfo = API.APP.AppMainDto
@@ -16,6 +17,9 @@ const SearchList = ()=>{
   const [totalPages, setTotalPages] = useState<number>(1)
   const [searchAppList, setSearchAppList] = useState<AppInfo[]>([])
   const listRef = useRef<HTMLDivElement>(null)
+
+  // 使用统一的安装 Hook
+  const { installingAppId, handleInstall } = useAppInstall()
   // 获取应用列表
   const getSearchKeyAppList = ({ pageNo = 1, init = false }) => {
     if (!keyword) {
@@ -93,12 +97,21 @@ const SearchList = ()=>{
       }
     }
   }, [keyword, pageNo, totalPages, loading])
+
   return <div className={styles.searchPage} ref={listRef}>
     <p className={styles.SearchResult}>搜索结果：</p>
     <div className={styles.SearchList}>
       {
         searchAppList.map((item, index) => {
-          return <ApplicationCard key={`${item.appId}_${index}`} options={item} operateId={1} />
+          return (
+            <ApplicationCard
+              key={`${item.appId}_${index}`}
+              options={item}
+              operateId={1}
+              loading={installingAppId === item.appId}
+              onInstall={handleInstall}
+            />
+          )
         })
       }
       {loading && <div className={styles.loadingTip}>加载中...</div>}

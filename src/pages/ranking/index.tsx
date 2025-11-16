@@ -5,6 +5,7 @@ import { useGlobalStore } from '@/stores/global'
 import styles from './index.module.scss'
 import { useEffect, useState, useRef } from 'react'
 import { generateEmptyCards } from './utils'
+import { useAppInstall } from '@/hooks/useAppInstall'
 
 const defaultPageSize = 10 // 每页显示数量
 
@@ -18,6 +19,9 @@ const Ranking = () => {
   const [pageNo, setPageNo] = useState<number>(1)
   const [loading, setLoading] = useState<boolean>(false)
   const [totalPages, setTotalPages] = useState<number>(1)
+
+  // 使用统一的安装 Hook
+  const { installingAppId, handleInstall } = useAppInstall()
 
 
   // 获取应用列表函数
@@ -130,6 +134,7 @@ const Ranking = () => {
       }
     }
   }, [activeTab, pageNo, totalPages, loading])
+
   return <div className={styles.rankContainer} ref={listRef}>
     <div className={styles.rankHeader}>
       <Tabs defaultActiveKey='101' onChange={handleTabChange} className={styles.customTabs}>
@@ -145,7 +150,13 @@ const Ranking = () => {
     <main className={styles.appBox}>
       <div className={styles.appList}>
         {RankList.map((item, index) => (
-          <ApplicationCard key={`${item.appId}_${index}`} options={item} operateId={1} />
+          <ApplicationCard
+            key={`${item.appId}_${index}`}
+            options={item}
+            operateId={1}
+            loading={installingAppId === item.appId}
+            onInstall={handleInstall}
+          />
         ))}
         {loading && <div className={styles.loadingTip}>加载中...</div>}
         {totalPages <= pageNo && RankList.length > 0 && <div className={styles.noMoreTip}>没有更多数据了</div>}

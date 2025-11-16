@@ -22,6 +22,8 @@ export interface ApplicationCardProps {
   loading?: boolean
   /** 卸载回调函数 */
   onUninstall?: (app: API.APP.AppMainDto) => void
+  /** 安装回调函数 */
+  onInstall?: (app: API.APP.AppMainDto) => void
 }
 
 // 导出操作类型常量，方便外部使用

@@ -5,6 +5,7 @@ import { getWelcomeCarouselList, getWelcomeAppList } from '@/apis/apps/index'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { useGlobalStore } from '@/stores/global'
 import { generateEmptyCards } from './utils'
+import { useAppInstall } from '@/hooks/useAppInstall'
 
 type AppInfo = API.APP.AppMainDto
 const defaultPageSize = 10 // 每页显示数量
@@ -19,6 +20,9 @@ const Recommend = () => {
   const [pageNo, setPageNo] = useState<number>(1)
   const [loading, setLoading] = useState<boolean>(false)
   const [totalPages, setTotalPages] = useState<number>(1)
+
+  // 使用统一的安装 Hook
+  const { installingAppId, handleInstall } = useAppInstall()
   const fetchData = useCallback(async() => {
     try {
       // 设置初始化的空卡片
@@ -101,6 +105,7 @@ const Recommend = () => {
       }
     }
   }, [pageNo, totalPages, loading])
+
   return (
     <div className={styles.recommend} ref={listRef} >
       <header className={styles.recommendHead}>
@@ -116,7 +121,13 @@ const Recommend = () => {
           <p className={styles.name}>玲珑推荐</p>
           <div className={styles.appList}>
             {recommendList.map((item, index) => (
-              <ApplicationCard key={`${item.appId}_${index}`} options={item} operateId={1} />
+              <ApplicationCard
+                key={`${item.appId}_${index}`}
+                options={item}
+                operateId={1}
+                loading={installingAppId === item.appId}
+                onInstall={handleInstall}
+              />
             ))}
             {loading && <div className={styles.loadingTip}>加载中...</div>}
             {totalPages <= pageNo && recommendList.length > 0 && <div className={styles.noMoreTip}>没有更多数据了</div>}
