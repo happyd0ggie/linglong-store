@@ -27,7 +27,15 @@ const DownloadIcon = ({ appId, percentage = 0, isDownloading = false }: {
         console.info('[handleCancel] Successfully cancelled:', appId)
       } catch (error) {
         console.error('[handleCancel] Cancel failed:', error)
-        message.error(`取消安装失败: ${error}`)
+
+        // 检查是否是"找不到进程"的错误
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (errorMessage.includes('No installation process found')) {
+          console.log('[handleCancel] Process not found, removing from list (likely residual data)')
+          removeDownloadingApp(appId)
+        } else {
+          message.error(`取消安装失败: ${errorMessage}`)
+        }
       }
     } else {
       // 已完成的任务直接删除
@@ -68,11 +76,16 @@ const DownloadProgress = () => {
   }, [])
 
   const cleanDownloadHistory = () => {
-    if (downloadList.length === 0) {
-      messageApi.info('暂无下载记录!')
+    // 检查是否有已完成的下载记录（flag !== 'downloading'）
+    const completedItems = downloadList.filter(item => item.flag !== 'downloading')
+
+    if (completedItems.length === 0) {
+      messageApi.info('暂无已完成的下载记录!')
       return
     }
+
     clearDownloadList()
+    messageApi.success(`已清除 ${completedItems.length} 条下载记录`)
   }
   return <>
     <div className={styles.downloadContainer}>

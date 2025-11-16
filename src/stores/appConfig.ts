@@ -116,5 +116,20 @@ export const tauriAppConfigHandler = createTauriStore('ConfigStore', useConfigSt
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const tauriDownloadConfigHandler = createTauriStore('downloadConfigStore', useDownloadConfigStore as any, {
   saveOnChange: true, // 配置变更时自动保存到磁盘
-  autoStart: true, // 应用启动时自动从磁盘加载配置
+  autoStart: false, // 禁用自动启动，我们手动加载并过滤
+})
+
+// 手动启动并过滤掉 downloading 状态的残留数据
+tauriDownloadConfigHandler.start().then(() => {
+  console.log('[tauriDownloadConfigHandler] Loaded from disk')
+  const state = useDownloadConfigStore.getState()
+  const originalCount = state.downloadList.length
+
+  // 过滤掉正在下载中的残留数据
+  const filteredList = state.downloadList.filter((app: Store.DownloadApp) => app.flag !== 'downloading')
+
+  if (filteredList.length < originalCount) {
+    console.log('[tauriDownloadConfigHandler] Filtered out', originalCount - filteredList.length, 'downloading items on startup')
+    useDownloadConfigStore.setState({ downloadList: filteredList })
+  }
 })
