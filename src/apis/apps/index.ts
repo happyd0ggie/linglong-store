@@ -27,6 +27,15 @@ export const getAppDetails = (data: API.APP.AppDetailsVO[]) => {
 }
 
 /**
+ * 获取应用详情（包含截图）
+ * @param data 应用id和架构信息数组
+ * @returns 应用详情
+ */
+export const getAppDetail = (data: API.APP.AppDetailsVO[]) => {
+  return post<API.Common.BaseResponse<API.APP.GetAppDetailsRes>>('/app/getAppDetail', data)
+}
+
+/**
  * 推荐页面 - 获取轮播图列表
  * @param data 轮播图查询参数
  * @returns 轮播图应用列表

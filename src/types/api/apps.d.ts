@@ -53,7 +53,16 @@ declare namespace API {
             /** 是否删除 */
             isDelete?: string
             /** 是否受欢迎 */
-            isWelcomed?: string
+            isWelcomed?: string,
+            /** 应用截图列表 */
+            appScreenshotList?: AppScreenshot[]
+        }
+
+        interface AppScreenshot {
+            /** 语言 */
+            lan: string
+            /** 截图地址 */
+            screenshotKey: string
         }
 
         /**

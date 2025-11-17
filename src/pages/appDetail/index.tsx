@@ -1,14 +1,17 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Button, Typography, Table, message, Modal, Spin, Space, Progress } from 'antd'
+import { Button, Typography, Table, message, Modal, Spin, Space, Progress, Image } from 'antd'
 import type { TableColumnProps } from 'antd'
 import styles from './index.module.scss'
 import goBack from '@/assets/icons/go_back.svg'
 import DefaultIcon from '@/assets/linyaps.svg'
 import type { InstalledApp, InstallProgress } from '@/apis/invoke/types'
+
+import { getAppDetail } from '@/apis/apps/index'
 import { searchVersions, uninstallApp, runApp, installApp, onInstallProgress, onInstallCancelled } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useDownloadConfigStore } from '@/stores/appConfig'
+import { useGlobalStore } from '@/stores/global'
 interface VersionInfo {
   version: string
   channel: string
@@ -21,12 +24,15 @@ const AppDetail = () => {
   const app = location.state as InstalledApp | undefined
 
   const [versions, setVersions] = useState<VersionInfo[]>([])
+
+  const [screenshotList, setScreenshotList] = useState<API.APP.AppScreenshot[]>([])
   const [loading, setLoading] = useState(false)
   const [uninstallingVersion, setUninstallingVersion] = useState<string | null>(null)
   const [isInstalling, setIsInstalling] = useState(false)
   const [installProgress, setInstallProgress] = useState<InstallProgress | null>(null)
   const removeApp = useInstalledAppsStore((state) => state.removeApp)
   const installedApps = useInstalledAppsStore((state) => state.installedApps)
+  const arch = useGlobalStore((state) => state.arch)
   const { addAppToDownloadList } = useDownloadConfigStore()
   // 从 store 中获取最新的应用信息（包括图标）
   const currentApp = useMemo(() => {
@@ -102,7 +108,7 @@ const AppDetail = () => {
   const isAppInstalled = useMemo(() => {
     return versions.length > 0
   }, [versions])
-
+  // 加载已安装版本列表
   const loadVersions = async() => {
     if (!currentApp?.appId) {
       // eslint-disable-next-line no-console
@@ -134,10 +140,30 @@ const AppDetail = () => {
       setLoading(false)
     }
   }
-
+  const getAppAllInfo = async() => {
+    if (!currentApp?.appId) {
+      // eslint-disable-next-line no-console
+      console.log('appAllInfo: currentApp.appId is empty')
+      return
+    }
+    // eslint-disable-next-line no-console
+    console.log('appAllInfo: getting app detail for', currentApp.appId)
+    try {
+      const result = await getAppDetail([{ appId: currentApp.appId, arch }])
+      const appDetailList = (result.data[currentApp.appId]as API.APP.AppMainDto[]) || []
+      if (appDetailList.length > 0) {
+        setScreenshotList(appDetailList[0].appScreenshotList || [])
+      } else {
+        setScreenshotList([])
+      }
+    } catch (err) {
+      console.error('appAllInfo: error', err)
+      message.error(`获取应用详情失败: ${err}`)
+    }
+  }
   useEffect(() => {
     loadVersions()
-
+    getAppAllInfo()
   }, [currentApp?.appId])
 
   const handleGoBack = () => {
@@ -395,6 +421,27 @@ const AppDetail = () => {
           {currentApp.description || '暂无描述信息'}
         </div>
       </div>
+      {screenshotList.length > 0 ? <div className={styles.screenshot}>
+        <div className={styles.title}>屏幕截图</div>
+        <div className={styles.imgBox}>
+          <div className={styles.imgList}>
+            {
+              screenshotList.map((item)=>{
+                // eslint-disable-next-line react/jsx-key
+                return (<Image
+                  width={320}
+                  height={180}
+                  src={item.screenshotKey}
+                  alt='应用截图'
+
+                />)
+              })
+            }
+          </div>
+        </div>
+      </div> : null
+      }
+
 
       <div className={styles.version}>
         <div className={styles.title}>已安装版本</div>

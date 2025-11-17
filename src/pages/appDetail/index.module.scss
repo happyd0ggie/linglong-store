@@ -184,13 +184,16 @@
 
         .imgBox {
             width: 100%;
-            overflow: hidden;
+            overflow-x: scroll;
 
             .imgList {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                overflow-x: scroll;
+
+                white-space: nowrap;
+
+                :global(.ant-image) {
+                    border-radius: 0.5rem;
+                    margin-right: 1rem;
+                }
             }
         }
     }
