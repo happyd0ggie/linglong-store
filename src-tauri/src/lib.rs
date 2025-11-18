@@ -56,8 +56,8 @@ async fn search_versions(app_id: String) -> Result<Vec<InstalledApp>, String> {
 }
 
 #[tauri::command]
-async fn run_app(app_id: String, version: String) -> Result<String, String> {
-    run_linglong_app(app_id, version).await
+async fn run_app(app_id: String) -> Result<String, String> {
+    run_linglong_app(app_id).await
 }
 
 #[tauri::command]

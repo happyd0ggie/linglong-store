@@ -66,16 +66,14 @@ export const searchVersions = async(
 }
 
 /**
- * 运行指定版本的应用
+ * 运行指定的玲珑应用
  * @param appId - 要运行的应用ID
- * @param version - 要运行的应用版本
  * @returns Promise<string> 运行操作的结果
  */
 export const runApp = async(
   appId: string,
-  version: string,
 ): Promise<string> => {
-  return await invoke('run_app', { appId, version })
+  return await invoke('run_app', { appId })
 }
 
 /**

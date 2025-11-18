@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button, Typography, Table, message, Modal, Spin, Space, Progress, Image } from 'antd'
 import type { TableColumnProps } from 'antd'
@@ -7,15 +7,14 @@ import goBack from '@/assets/icons/go_back.svg'
 import DefaultIcon from '@/assets/linyaps.svg'
 import type { InstalledApp, InstallProgress } from '@/apis/invoke/types'
 
-import { getAppDetail } from '@/apis/apps/index'
+import { getAppDetail, getSearchAppVersionList } from '@/apis/apps'
 import { searchVersions, uninstallApp, runApp, installApp, onInstallProgress, onInstallCancelled } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useDownloadConfigStore } from '@/stores/appConfig'
 import { useGlobalStore } from '@/stores/global'
-interface VersionInfo {
-  version: string
-  channel: string
-  module: string
+
+interface VersionInfo extends API.APP.AppMainDto {
+  version?: string
 }
 
 const AppDetail = () => {
@@ -24,16 +23,41 @@ const AppDetail = () => {
   const app = location.state as InstalledApp | undefined
 
   const [versions, setVersions] = useState<VersionInfo[]>([])
+  const [installedVersionSet, setInstalledVersionSet] = useState<Set<string>>(new Set())
 
   const [screenshotList, setScreenshotList] = useState<API.APP.AppScreenshot[]>([])
   const [loading, setLoading] = useState(false)
   const [uninstallingVersion, setUninstallingVersion] = useState<string | null>(null)
+  const [installingVersion, setInstallingVersion] = useState<string | null>(null)
   const [isInstalling, setIsInstalling] = useState(false)
   const [installProgress, setInstallProgress] = useState<InstallProgress | null>(null)
   const removeApp = useInstalledAppsStore((state) => state.removeApp)
   const installedApps = useInstalledAppsStore((state) => state.installedApps)
   const arch = useGlobalStore((state) => state.arch)
+  const repoName = useGlobalStore((state) => state.repoName)
   const { addAppToDownloadList } = useDownloadConfigStore()
+  const installCompletionRef = useRef(false)
+  const progressClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const resetInstallState = (options?: { immediate?: boolean }) => {
+    if (progressClearTimerRef.current) {
+      clearTimeout(progressClearTimerRef.current)
+      progressClearTimerRef.current = null
+    }
+
+    setIsInstalling(false)
+    setInstallingVersion(null)
+
+    if (options?.immediate) {
+      setInstallProgress(null)
+      return
+    }
+
+    progressClearTimerRef.current = setTimeout(() => {
+      setInstallProgress(null)
+      progressClearTimerRef.current = null
+    }, 1200)
+  }
   // 从 store 中获取最新的应用信息（包括图标）
   const currentApp = useMemo(() => {
     if (!app?.appId) {
@@ -60,94 +84,125 @@ const AppDetail = () => {
     let unlistenCancel: (() => void) | null = null
 
     const setupListener = async() => {
-      console.log('[useEffect] Setting up install progress listener for appId:', currentApp?.appId)
+      console.info('[useEffect] Setting up install progress listener for appId:', currentApp?.appId)
 
       // 监听安装进度
       unlistenProgress = await onInstallProgress((progress) => {
-        console.log('[useEffect] Install progress received:', progress)
-        if (progress.appId === currentApp?.appId) {
-          console.log('[useEffect] AppId matched! Updating state with:', progress)
-          setInstallProgress(prev => {
-            console.log('[useEffect] Previous state:', prev)
-            console.log('[useEffect] New state:', progress)
-            return progress
-          })
-        } else {
-          console.log('[useEffect] AppId not matched. Expected:', currentApp?.appId, 'Got:', progress.appId)
+        console.info('[useEffect] Install progress received:', progress)
+        if (progress.appId !== currentApp?.appId) {
+          console.info('[useEffect] AppId not matched. Expected:', currentApp?.appId, 'Got:', progress.appId)
+          return
         }
+
+        setInstallProgress(progress)
+
+        if (progress.progress === 'error') {
+          console.info('[useEffect] Installation failed for current app, resetting state')
+          installCompletionRef.current = true
+          resetInstallState({ immediate: true })
+          return
+        }
+
+        if (progress.percentage >= 100) {
+          if (!installCompletionRef.current) {
+            console.info('[useEffect] Installation finished for current app, refreshing versions')
+            installCompletionRef.current = true
+            resetInstallState()
+            refreshInstalledVersions().catch(() => undefined)
+          }
+          return
+        }
+
+        installCompletionRef.current = false
+        setIsInstalling(true)
       })
 
       // 监听安装取消事件
       unlistenCancel = await onInstallCancelled((event) => {
-        console.log('[useEffect] Install cancelled event received:', event)
+        console.info('[useEffect] Install cancelled event received:', event)
         if (event.appId === currentApp?.appId) {
-          console.log('[useEffect] Installation cancelled for current app, resetting state')
-          setIsInstalling(false)
-          setInstallProgress(null)
+          console.info('[useEffect] Installation cancelled for current app, resetting state')
+          installCompletionRef.current = true
+          resetInstallState({ immediate: true })
         }
       })
 
-      console.log('[useEffect] Listener setup complete')
+      console.info('[useEffect] Listener setup complete')
     }
 
     setupListener()
 
     // 组件卸载时清理监听器
     return () => {
-      console.log('[useEffect] Cleaning up listeners')
+      console.info('[useEffect] Cleaning up listeners')
       if (unlistenProgress) {
         unlistenProgress()
       }
       if (unlistenCancel) {
         unlistenCancel()
       }
+      if (progressClearTimerRef.current) {
+        clearTimeout(progressClearTimerRef.current)
+        progressClearTimerRef.current = null
+      }
     }
   }, [currentApp?.appId])
 
-  // 检查应用是否已安装
-  const isAppInstalled = useMemo(() => {
-    return versions.length > 0
+  // 获取最新版本
+  const latestVersion = useMemo(() => {
+    return versions.length > 0 ? versions[0].version : undefined
   }, [versions])
-  // 加载已安装版本列表
-  const loadVersions = async() => {
-    if (!currentApp?.appId) {
-      // eslint-disable-next-line no-console
-      console.log('loadVersions: currentApp.appId is empty')
-      return
+
+  // 判断是否安装了最新版本
+  const isLatestVersionInstalled = useMemo(() => {
+    if (!latestVersion) {
+      return false
     }
-    // eslint-disable-next-line no-console
-    console.log('loadVersions: searching versions for', currentApp.appId)
-    setLoading(true)
+    return installedVersionSet.has(latestVersion)
+  }, [latestVersion, installedVersionSet])
+
+  const refreshInstalledVersions = async(): Promise<Set<string>> => {
+    if (!currentApp?.appId) {
+      console.info('refreshInstalledVersions: missing appId')
+      return new Set()
+    }
     try {
       const result = await searchVersions(currentApp.appId)
-      // eslint-disable-next-line no-console
-      console.log('loadVersions: search result', result)
+      const nextSet = new Set(result.map(item => item.version))
+      setInstalledVersionSet(nextSet)
+      return nextSet
+    } catch (err) {
+      console.error('refreshInstalledVersions: error', err)
+      return installedVersionSet
+    }
+  }
 
-      // 将 InstalledApp[] 转换为 VersionInfo[]
-      const parsedVersions: VersionInfo[] = result.map(item => ({
-        version: item.version,
-        channel: item.channel,
-        module: item.module || 'unknown',
-      }))
-
-      // eslint-disable-next-line no-console
-      console.log('loadVersions: parsed versions', parsedVersions)
-      setVersions(parsedVersions)
+  const loadVersions = async() => {
+    if (!currentApp?.appId) {
+      console.info('loadVersions: currentApp.appId is empty')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await getSearchAppVersionList({
+        appId: currentApp.appId,
+        repoName,
+        arch,
+      })
+      setVersions(res.data || [])
     } catch (err) {
       console.error('loadVersions: error', err)
-      message.error(`加载版本列表失败: ${err}`)
+      message.error(`加载版本列表失败: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
   }
   const getAppAllInfo = async() => {
     if (!currentApp?.appId) {
-      // eslint-disable-next-line no-console
-      console.log('appAllInfo: currentApp.appId is empty')
+      console.info('appAllInfo: currentApp.appId is empty')
       return
     }
-    // eslint-disable-next-line no-console
-    console.log('appAllInfo: getting app detail for', currentApp.appId)
+    console.info('appAllInfo: getting app detail for', currentApp.appId)
     try {
       const result = await getAppDetail([{ appId: currentApp.appId, arch }])
       const appDetailList = (result.data[currentApp.appId]as API.APP.AppMainDto[]) || []
@@ -163,8 +218,9 @@ const AppDetail = () => {
   }
   useEffect(() => {
     loadVersions()
+    refreshInstalledVersions()
     getAppAllInfo()
-  }, [currentApp?.appId])
+  }, [currentApp?.appId, arch, repoName])
 
   const handleGoBack = () => {
     navigate(-1)
@@ -179,21 +235,15 @@ const AppDetail = () => {
       title: '确认卸载',
       content: `确定要卸载 ${currentApp.zhName || currentApp.appId} 的版本 ${version} 吗？`,
       onOk: async() => {
-        // eslint-disable-next-line no-console
-        console.log('[handleUninstall] Starting to uninstall:', currentApp.appId, version)
+        console.info('[handleUninstall] Starting to uninstall:', currentApp.appId, version)
         setUninstallingVersion(version)
         try {
           await uninstallApp(currentApp.appId, version)
-          // eslint-disable-next-line no-console
-          console.log('[handleUninstall] Successfully uninstalled:', currentApp.appId, version)
+          console.info('[handleUninstall] Successfully uninstalled:', currentApp.appId, version)
           message.success('卸载成功')
 
-          // 重新加载版本列表
-          await loadVersions()
-
-          // 如果所有版本都卸载完了,从已安装列表移除
-          const remainingVersions = versions.filter(v => v.version !== version)
-          if (remainingVersions.length === 0) {
+          const remainingVersions = await refreshInstalledVersions()
+          if (remainingVersions.size === 0) {
             removeApp(currentApp.appId, version)
             navigate('/my-apps')
           }
@@ -207,25 +257,162 @@ const AppDetail = () => {
     })
   }
 
-  const handleRun = async(version: string) => {
+  const handleRun = async() => {
     if (!currentApp?.appId) {
-      // eslint-disable-next-line no-console
-      console.log('[handleRun] currentApp.appId is empty')
+      console.info('[handleRun] currentApp.appId is empty')
       return
     }
 
-    // eslint-disable-next-line no-console
-    console.log('[handleRun] Starting app:', currentApp.appId, 'version:', version)
+    console.info('[handleRun] Starting app:', currentApp.appId)
 
-    // 启动应用
-    runApp(currentApp.appId, version)
+    try {
+      // 根据 ll-cli 文档，启动应用只需要 appId，不需要版本号
+      await runApp(currentApp.appId)
+      message.success('应用启动成功')
+    } catch (error) {
+      const errorMessage = extractErrorMessage(error)
+      console.error('[handleRun] Failed to run app:', errorMessage)
+      message.error(`启动失败: ${errorMessage}`)
+    }
   }
 
-  const columns: TableColumnProps[] = [
+  const extractErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+      return error.message
+    }
+    if (typeof error === 'string') {
+      return error
+    }
+    try {
+      return JSON.stringify(error)
+    } catch {
+      return String(error)
+    }
+  }
+
+  const isForceInstallHint = (messageText: string) => {
+    if (!messageText) {
+      return false
+    }
+    const normalized = messageText.replace(/\s+/g, ' ')
+    return normalized.includes('ll-cli install') && normalized.includes('--force')
+  }
+
+  const confirmForceInstall = (content: string) => {
+    return new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: '最新版本已安装',
+        content: (
+          <div>
+            <p>{content}</p>
+            <p>是否使用此版本进行替换？</p>
+          </div>
+        ),
+        okText: '替换安装',
+        cancelText: '取消',
+        centered: true,
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      })
+    })
+  }
+
+  const runInstall = async(
+    version: string | undefined,
+    force = false,
+    skipDownloadInit = false,
+    appInfo?: VersionInfo,
+  ) => {
+    if (!currentApp?.appId) {
+      throw new Error('应用信息不完整')
+    }
+
+    installCompletionRef.current = false
+    if (progressClearTimerRef.current) {
+      clearTimeout(progressClearTimerRef.current)
+      progressClearTimerRef.current = null
+    }
+
+    if (!skipDownloadInit) {
+      const downloadInfo = {
+        ...currentApp,
+        ...(appInfo || {}),
+        version: appInfo?.version ?? version,
+      }
+      addAppToDownloadList({
+        ...downloadInfo,
+        flag: 'downloading',
+        percentage: 0,
+        installStatus: '准备安装...',
+      })
+
+      const initialProgress = {
+        appId: currentApp.appId,
+        progress: '0%',
+        percentage: 0,
+        status: '准备安装...',
+      }
+      setInstallProgress(initialProgress)
+    }
+
+    await installApp(currentApp.appId, version, force)
+  }
+
+  const handleVersionInstall = async(versionInfo: VersionInfo) => {
+    if (!versionInfo.version) {
+      message.error('缺少版本信息，无法安装')
+      return
+    }
+
+    setIsInstalling(true)
+    setInstallingVersion(versionInfo.version)
+    try {
+      await runInstall(versionInfo.version, false, false, versionInfo)
+      message.success({ content: '安装成功！', key: 'install' })
+      await refreshInstalledVersions()
+    } catch (error) {
+      const errorMessage = extractErrorMessage(error)
+      console.error('[handleVersionInstall] 安装失败:', errorMessage)
+      if (isForceInstallHint(errorMessage)) {
+        const confirmed = await confirmForceInstall(errorMessage)
+        if (confirmed) {
+          try {
+            await runInstall(versionInfo.version, true, true, versionInfo)
+            message.success({ content: '安装成功！', key: 'install' })
+            await refreshInstalledVersions()
+          } catch (forceError) {
+            const forceMessage = extractErrorMessage(forceError)
+            console.error('[handleVersionInstall] 强制安装失败:', forceMessage)
+            message.error({
+              content: `安装失败: ${forceMessage}`,
+              key: 'install',
+            })
+          }
+        }
+      } else {
+        message.error({
+          content: `安装失败: ${errorMessage}`,
+          key: 'install',
+        })
+      }
+    } finally {
+      if (!installCompletionRef.current) {
+        resetInstallState({ immediate: true })
+      }
+    }
+  }
+
+  const columns: TableColumnProps<VersionInfo>[] = [
     {
       title: '版本号',
       dataIndex: 'version',
       align: 'center',
+    },
+    {
+      title: '应用类型',
+      dataIndex: 'kind',
+      align: 'center',
+      render: (value: string | undefined) => value || '--',
     },
     {
       title: '通道',
@@ -238,32 +425,72 @@ const AppDetail = () => {
       align: 'center',
     },
     {
+      title: '仓库来源',
+      dataIndex: 'repoName',
+      align: 'center',
+      render: (value: string | undefined) => value || '--',
+    },
+    {
+      title: '文件大小',
+      dataIndex: 'size',
+      align: 'center',
+      render: (value: string | undefined) => value || '--',
+    },
+    {
+      title: '下载量',
+      dataIndex: 'installCount',
+      align: 'center',
+      render: (value: number | undefined) => value ?? '--',
+    },
+    {
       title: '操作',
       dataIndex: 'operate',
       align: 'center',
       render: (_col, record) => {
         const versionInfo = record as VersionInfo
-        const isUninstalling = uninstallingVersion === versionInfo.version
+        const versionValue = versionInfo.version || ''
+        const isInstalled = versionValue ? installedVersionSet.has(versionValue) : false
+        const isUninstalling = uninstallingVersion === versionValue
+        const isRowInstalling = installingVersion === versionValue
+
+        if (!versionValue) {
+          return '--'
+        }
 
         return (
           <Space>
-            <Button
-              type='primary'
-              size='small'
-              onClick={() => handleRun(versionInfo.version)}
-              disabled={isUninstalling}
-            >
-              启动
-            </Button>
-            <Button
-              type='primary'
-              danger
-              size='small'
-              onClick={() => handleUninstall(versionInfo.version)}
-              loading={isUninstalling}
-            >
-              卸载
-            </Button>
+            {isInstalled ? ([
+              <Button
+                key={`${versionValue}-run`}
+                type='primary'
+                size='small'
+                onClick={() => handleRun()}
+                disabled={isUninstalling}
+              >
+                启动
+              </Button>,
+              <Button
+                key={`${versionValue}-uninstall`}
+                type='primary'
+                danger
+                size='small'
+                onClick={() => handleUninstall(versionValue)}
+                loading={isUninstalling}
+                disabled={isRowInstalling}
+              >
+                卸载
+              </Button>,
+            ]) : (
+              <Button
+                type='primary'
+                size='small'
+                onClick={() => handleVersionInstall(versionInfo)}
+                loading={isRowInstalling}
+                disabled={isUninstalling || isInstalling}
+              >
+                安装
+              </Button>
+            )}
           </Space>
         )
       },
@@ -283,47 +510,48 @@ const AppDetail = () => {
       return
     }
 
+    // 如果已安装最新版本，则启动应用
+    if (isLatestVersionInstalled && latestVersion) {
+      console.info('[handleInstallBtnClick] 启动最新版本:', latestVersion)
+      handleRun()
+      return
+    }
+
+    // 否则安装应用
+    setIsInstalling(true)
     try {
-      console.log('[handleInstallBtnClick] Starting installation for:', currentApp.appId)
-
-      // 先将应用添加到下载列表，初始进度为 0%
-      addAppToDownloadList({
-        ...currentApp,
-        flag: 'downloading',
-        percentage: 0,
-        installStatus: '准备安装...',
-      })
-
-      setIsInstalling(true)
-      const initialProgress = {
-        appId: currentApp.appId,
-        progress: '0%',
-        percentage: 0,
-        status: '准备安装...',
-      }
-      console.log('[handleInstallBtnClick] Setting initial progress:', initialProgress)
-      setInstallProgress(initialProgress)
-
-      console.log('[handleInstallBtnClick] Calling installApp...')
-      // 开始安装（进度通过全局监听器更新到下载列表）
-      await installApp(currentApp.appId)
-
-      console.log('[handleInstallBtnClick] installApp completed')
-      // 安装完成
+      await runInstall(undefined)
       message.success({ content: '安装成功！', key: 'install' })
-      setIsInstalling(false)
-      setInstallProgress(null)
-
-      // 刷新版本列表
-      loadVersions()
+      await refreshInstalledVersions()
     } catch (error) {
-      console.error('[handleInstallBtnClick] 安装失败:', error)
-      message.error({
-        content: `安装失败: ${error instanceof Error ? error.message : String(error)}`,
-        key: 'install',
-      })
-      setIsInstalling(false)
-      setInstallProgress(null)
+      const errorMessage = extractErrorMessage(error)
+      console.error('[handleInstallBtnClick] 安装失败:', errorMessage)
+      if (isForceInstallHint(errorMessage)) {
+        const confirmed = await confirmForceInstall(errorMessage)
+        if (confirmed) {
+          try {
+            await runInstall(undefined, true, true)
+            message.success({ content: '安装成功！', key: 'install' })
+            await refreshInstalledVersions()
+          } catch (forceError) {
+            const forceMessage = extractErrorMessage(forceError)
+            console.error('[handleInstallBtnClick] 强制安装失败:', forceMessage)
+            message.error({
+              content: `安装失败: ${forceMessage}`,
+              key: 'install',
+            })
+          }
+        }
+      } else {
+        message.error({
+          content: `安装失败: ${errorMessage}`,
+          key: 'install',
+        })
+      }
+    } finally {
+      if (!installCompletionRef.current) {
+        resetInstallState({ immediate: true })
+      }
     }
   }
 
@@ -354,12 +582,8 @@ const AppDetail = () => {
                   loading={isInstalling}
                   disabled={isInstalling}
                 >
-                  {isInstalling ? '安装中...' : (isAppInstalled ? '安装' : '安装')}
+                  {isInstalling ? '安装中...' : (isLatestVersionInstalled ? '启动' : '安装')}
                 </Button>
-                {(() => {
-                  console.log('[Render] isInstalling:', isInstalling, 'installProgress:', installProgress, 'isAppInstalled:', isAppInstalled)
-                  return null
-                })()}
                 {isInstalling && installProgress && (
                   <div style={{ marginTop: '12px', width: '100%' }}>
                     <Progress
@@ -444,14 +668,14 @@ const AppDetail = () => {
 
 
       <div className={styles.version}>
-        <div className={styles.title}>已安装版本</div>
+        <div className={styles.title}>版本选择</div>
         <div className={styles.content}>
           <Spin spinning={loading}>
             <Table
               columns={columns}
               dataSource={versions}
               pagination={false}
-              rowKey='version'
+              rowKey={(record) => record.version || record.id || `${record.appId}-${record.version}`}
               scroll={{ x: 'max-content' }}
             />
           </Spin>
@@ -462,3 +686,4 @@ const AppDetail = () => {
 }
 
 export default AppDetail
+
