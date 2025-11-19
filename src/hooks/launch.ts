@@ -30,16 +30,13 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
 
   // ==================== Store 状态和方法 ====================
   // 全局状态
-  const { onInited, setArch, getUpdateAppNum } = useGlobalStore()
+  const { onInited, setArch } = useGlobalStore()
 
   // 配置状态
   const { showBaseService, checkVersion } = useConfigStore()
 
   // 已安装应用状态
-  const {
-    fetchInstalledApps,
-    needUpdateApps,
-  } = useInstalledAppsStore()
+  const { fetchInstalledApps, updateAppDetails } = useInstalledAppsStore()
 
   // ==================== 初始化步骤 ====================
 
@@ -50,7 +47,7 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
     try {
       const currentArch = arch()
       setArch(currentArch)
-      setProgress(25)
+      setProgress(20)
     } catch (err) {
       throw new Error(`获取系统架构失败: ${err}`)
     }
@@ -69,24 +66,16 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   }, [fetchInstalledApps, showBaseService])
 
   /**
-   * 步骤3: 检查应用更新
+   * 步骤3: 加载已安装应用信息
    */
-  const checkAppUpdates = useCallback(async() => {
+  const loadInstalledAppsDetail = useCallback(async() => {
     try {
-      // TODO: 实现检查更新逻辑
-      // 1. 对比已安装应用和服务器版本
-      // 2. 筛选出需要更新的应用
-      // 3. 更新 needUpdateApps 列表
-
-      const updateCount = needUpdateApps.length
-      getUpdateAppNum(updateCount)
-      setProgress(75)
+      await updateAppDetails()
+      setProgress(80)
     } catch (err) {
-      // 更新检查失败不阻止初始化
-      console.warn('检查应用更新失败:', err)
-      setProgress(75)
+      throw new Error(`获取已安装应用信息: ${err}`)
     }
-  }, [needUpdateApps, getUpdateAppNum])
+  }, [updateAppDetails])
 
   /**
    * 步骤4: 检查商店版本更新
@@ -128,9 +117,9 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
       setCurrentStep('加载已安装应用')
       await loadInstalledApps()
 
-      // 步骤3: 检查应用更新
-      setCurrentStep('检查应用更新')
-      await checkAppUpdates()
+      // 步骤3: 加载已安装应用详情
+      setCurrentStep('加载已安装应用详情')
+      await loadInstalledAppsDetail()
 
       // 步骤4: 检查商店版本（可选）
       setCurrentStep('检查商店版本')
@@ -148,7 +137,6 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   }, [
     initSystemInfo,
     loadInstalledApps,
-    checkAppUpdates,
     checkStoreVersion,
     onInited,
   ])

@@ -27,6 +27,9 @@ const alovaInstance = createAlova({
       if (!response.ok) {
         throw new Error(data.message || '请求失败')
       }
+      if (data.code && data.code !== 200) {
+        throw new Error(data.message || `请求失败，错误码[${data.code}]`)
+      }
       return data
     },
     onError: (error) => {

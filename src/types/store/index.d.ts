@@ -68,10 +68,6 @@ declare namespace Store {
     installedApps: API.Invoke.InstalledApp[]
     /** 需要更新的应用列表 */
     needUpdateApps: API.Invoke.InstalledApp[]
-    /** 加载状态 */
-    loading: boolean
-    /** 错误信息 */
-    error: string | null
 
     /**
      * 获取已安装应用列表
@@ -83,14 +79,6 @@ declare namespace Store {
      * 更新应用详情（从后端API获取图标、中文名称等）
      */
     updateAppDetails: () => Promise<void>
-
-    /**
-     * 更新单个应用的 loading 状态
-     * @param appId - 应用ID
-     * @param version - 应用版本
-     * @param loading - loading状态
-     */
-    updateAppLoading: (appId: string, version: string, loading: boolean) => void
 
     /**
      * 移除已卸载的应用

@@ -10,8 +10,6 @@ import { uninstallApp } from '@/apis/invoke'
 const MyApplications = () => {
   const {
     installedApps,
-    // loading,
-    error,
     fetchInstalledApps,
   } = useInstalledAppsStore()
 
@@ -19,11 +17,6 @@ const MyApplications = () => {
   const [mergedApps, setMergedApps] = useState<InstalledApp[]>([])
   const listRef = useRef<HTMLDivElement>(null)
   const [uninstallingAppId, setUninstallingAppId] = useState<string | null>(null)
-
-  useEffect(() => {
-    // 加载已安装应用列表
-    fetchInstalledApps(showBaseService)
-  }, [showBaseService, fetchInstalledApps])
 
   useEffect(() => {
     // 合并同appId的应用（显示最新版本，记录版本数）
@@ -107,16 +100,6 @@ const MyApplications = () => {
         }
       },
     })
-  }
-
-  if (error) {
-    return (
-      <div className={styles.myAppsPage}>
-        <div className={styles.applicationList}>
-          <Empty description={`加载失败: ${error}`} />
-        </div>
-      </div>
-    )
   }
 
   return (

@@ -5,8 +5,6 @@ import { useInstalledAppsStore } from '@/stores/installedApps'
 import type { InstalledApp } from '@/apis/invoke/types'
 const UpdateApp = ()=>{
   const {
-    error,
-    loading,
     needUpdateApps,
   } = useInstalledAppsStore()
 
@@ -14,17 +12,9 @@ const UpdateApp = ()=>{
     message.info('更新功能开发中...')
     // TODO: 实现更新逻辑
   }
-  if (error) {
-    return (
-      <div style={{ padding: 20 }}>
-        <p className={styles.myAppTitle}>我的应用：</p>
-        <Empty description={`加载失败: ${error}`} />
-      </div>
-    )
-  }
   return <div style={{ padding: 20 }}>
     <p className={styles.updateAppTitle}>更新应用：</p>
-    <Spin spinning={loading} style={{ display: 'block' }}>
+    <Spin style={{ display: 'block' }}>
       { needUpdateApps.length > 0 ? (
         <div className={styles.updateApplicationList}>
           {needUpdateApps.map((app, index) => (
