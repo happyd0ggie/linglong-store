@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 
 // 全局进程管理器，存储正在进行的安装进程
 // 使用 Arc<Mutex<Box<dyn Child + Send + Sync>>> 来共享进程所有权
-static INSTALL_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn Child + Send + Sync>>>>>>> = 
+static INSTALL_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn Child + Send + Sync>>>>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -230,11 +230,11 @@ pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, St
         .into_iter()
         .filter(|item| {
             // 匹配 app_id 或 name
-            let matches = item.app_id.as_ref().map_or(false, |id| id == &app_id) 
+            let matches = item.app_id.as_ref().map_or(false, |id| id == &app_id)
                 || item.name == app_id;
             if matches {
-                println!("[search_app_versions] Found matching app: {} ({})", 
-                         item.name, 
+                println!("[search_app_versions] Found matching app: {} ({})",
+                         item.name,
                          item.app_id.as_ref().unwrap_or(&item.name));
             }
             matches
@@ -273,7 +273,7 @@ pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, St
         .collect();
     println!("[search_app_versions] Found {} installed versions for app_id: {}", apps.len(), app_id);
     for app in &apps {
-        println!("[search_app_versions] - {} version: {}, channel: {}, module: {}", 
+        println!("[search_app_versions] - {} version: {}, channel: {}, module: {}",
                  app.app_id, app.version, app.channel, app.module);
     }
     Ok(apps)
@@ -282,7 +282,7 @@ pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, St
 pub async fn run_linglong_app(app_id: String) -> Result<String, String> {
     // 根据 ll-cli 文档，run 命令只需要应用名，不需要版本号
     // 示例：ll-cli run org.deepin.calculator
-    
+
     println!("[run_linglong_app] Starting app: {}", app_id);
     println!("[run_linglong_app] Command: ll-cli run {}", app_id);
 
@@ -369,8 +369,8 @@ pub async fn install_linglong_app(
     }
 
     let command_str = format!(
-            "ll-cli install {} -y{}", 
-        app_ref, 
+            "ll-cli install {} -y{}",
+        app_ref,
         if force { " --force" } else { "" }
     );
     println!("[install_linglong_app] Executing command: {}", command_str);
@@ -479,15 +479,18 @@ pub async fn install_linglong_app(
                                 let progress_info = parse_install_progress(&line, &app_id_clone);
 
                                 // 只有当百分比变化时才发送事件，避免大量重复更新
-                                if progress_info.percentage != last_percentage {
-                                    println!("[PTY] Progress changed: {}% -> {}%", last_percentage, progress_info.percentage);
-                                last_percentage = progress_info.percentage;
+                                // 或者当状态为"安装失败"时，强制发送
+                                if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
+                                    println!("[PTY] Progress changed or error detected: {}% -> {}%, status: {}", last_percentage, progress_info.percentage, progress_info.status);
+                                    if progress_info.percentage != last_percentage {
+                                        last_percentage = progress_info.percentage;
+                                    }
 
-                                if let Err(e) = app_handle_clone.emit("install-progress", &progress_info) {
+                                    if let Err(e) = app_handle_clone.emit("install-progress", &progress_info) {
                                         println!("[PTY Reader] WARN: Failed to emit progress: {}", e);
+                                    }
                                 }
                             }
-                        }
                     }
 
                     // 处理缓冲区中包含百分比但没有换行符的内容（同行更新的进度条）
@@ -495,12 +498,14 @@ pub async fn install_linglong_app(
                             record_cli_output(&line_buffer);
                             let progress_info = parse_install_progress(&line_buffer, &app_id_clone);
 
-                            if progress_info.percentage != last_percentage {
+                            if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
                                 println!("[PTY] Progress changed (partial): {}% -> {}%", last_percentage, progress_info.percentage);
-                            last_percentage = progress_info.percentage;
+                                if progress_info.percentage != last_percentage {
+                                    last_percentage = progress_info.percentage;
+                                }
 
-                            let _ = app_handle_clone.emit("install-progress", &progress_info);
-                        }
+                                let _ = app_handle_clone.emit("install-progress", &progress_info);
+                            }
                     }
                 }
                 Err(e) => {
@@ -574,7 +579,7 @@ pub async fn install_linglong_app(
     println!("[install_linglong_app] Process exited with status: {:?}", exit_status);
     let get_force_hint_message = || -> String {
             let fallback = format!(
-                "��ǰ�Ѱ�װ���°汾�����踲�ǰ�װ���볢��ʹ�����ll-cli install {}/version --force",
+                "ll-cli install {}/version --force",
             app_id
         );
         match force_hint_message.lock() {
@@ -612,7 +617,7 @@ pub async fn install_linglong_app(
                 app_id: app_id.clone(),
                 progress: "error".to_string(),
             percentage: 0,
-            status: "��װʧ��".to_string(),
+            status: "安装失败".to_string(),
         });
         return Err(failure_message);
     }
@@ -708,7 +713,9 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
             "正在下载".to_string()
     } else if latest_progress.contains("install") || latest_progress.contains("安装") {
             "正在安装".to_string()
-    } else if latest_progress.contains("error") || latest_progress.contains("错误") || latest_progress.contains("failed") {
+    } else if latest_progress.contains("Error executing command as another user: Request dismissed") {
+            "安装失败".to_string()
+    } else if latest_progress.to_lowercase().contains("error") || latest_progress.contains("错误") || latest_progress.to_lowercase().contains("failed") {
             "安装失败".to_string()
     } else if !latest_progress.is_empty() {
             // 截取前50个字符作为状态
