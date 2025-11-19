@@ -24,6 +24,8 @@ export interface ApplicationCardProps {
   onUninstall?: (app: API.APP.AppMainDto) => void
   /** 安装回调函数 */
   onInstall?: (app: API.APP.AppMainDto) => void
+  /** 更新回调函数 */
+  onUpdate?: (app: API.APP.AppMainDto) => void
 }
 
 // 导出操作类型常量，方便外部使用

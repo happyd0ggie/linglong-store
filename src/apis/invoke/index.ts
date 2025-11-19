@@ -4,7 +4,7 @@
  */
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { InstalledApp, InstallProgress } from './types'
+import type { InstalledApp, InstallProgress, SearchResultItem } from './types'
 
 /**
  * 获取正在运行的玲珑应用列表
@@ -159,4 +159,13 @@ export const onInstallCancelled = async(
       callback(event.payload)
     },
   )
+}
+
+/**
+ * 搜索远程应用
+ * @param appId - 应用ID
+ * @returns Promise<SearchResultItem[]> 搜索结果
+ */
+export const searchRemoteApp = async(appId: string): Promise<SearchResultItem[]> => {
+  return await invoke('search_remote_app_cmd', { appId })
 }

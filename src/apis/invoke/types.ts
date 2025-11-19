@@ -32,3 +32,26 @@ export interface InstallCancelled {
   cancelled: boolean; // 是否已取消
   message: string; // 取消消息
 }
+
+// 应用更新信息
+export interface UpdateInfo {
+  appId: string;
+  name: string;
+  version: string; // 新版本
+  currentVersion: string; // 当前版本
+  description: string;
+  icon: string;
+  arch: string;
+  categoryName?: string;
+}
+
+// 搜索结果项
+export interface SearchResultItem {
+  appId?: string;
+  name: string;
+  version: string;
+  arch?: string | string[];
+  description?: string;
+  module?: string;
+  icon?: string;
+}

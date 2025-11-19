@@ -24,6 +24,7 @@ const ApplicationCard = ({
   loading = false,
   onUninstall,
   onInstall,
+  onUpdate,
 }: ApplicationCardProps) => {
   const navigate = useNavigate()
 
@@ -69,7 +70,12 @@ const ApplicationCard = ({
     if (operateId === OperateType.INSTALL && onInstall) {
       onInstall(options)
     }
-  }, [operateId, onUninstall, onInstall, options])
+
+    // 如果是更新操作且提供了回调函数，调用更新
+    if (operateId === OperateType.UPDATE && onUpdate) {
+      onUpdate(options)
+    }
+  }, [operateId, onUninstall, onInstall, onUpdate, options])
 
   return (
     <div

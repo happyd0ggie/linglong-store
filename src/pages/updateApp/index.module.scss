@@ -1,15 +1,40 @@
+.container {
+    padding: 20px;
+    position: relative;
+    min-height: 100%;
+}
+
 .updateAppTitle {
     font-size: 1.25rem;
     font-weight: 500;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .updateApplicationList {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 16px;
+    padding-bottom: 80px; // Space for floating button
+}
 
-    .badgeBox {
-        width: 20rem;
-    }
+.cardWrapper {
+    width: 100%;
+}
+
+.floatingBtnContainer {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 24px;
+}
+
+.emptyContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 100px;
 }
