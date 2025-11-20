@@ -586,7 +586,7 @@ const AppDetail = () => {
                   loading={isInstalling}
                   disabled={isInstalling}
                 >
-                  {isInstalling ? '安装中...' : (isLatestVersionInstalled ? '启动' : '安装')}
+                  {isInstalling ? '安装中...' : (isLatestVersionInstalled ? '启动' : '更新')}
                 </Button>
                 {isInstalling && installProgress && (
                   <div style={{ marginTop: '12px', width: '100%' }}>
