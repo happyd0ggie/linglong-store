@@ -5,7 +5,6 @@ import { getWelcomeCarouselList, getWelcomeAppList } from '@/apis/apps/index'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { useGlobalStore } from '@/stores/global'
 import { generateEmptyCards } from './utils'
-import { useAppInstall } from '@/hooks/useAppInstall'
 
 type AppInfo = API.APP.AppMainDto
 const defaultPageSize = 10 // 每页显示数量
@@ -21,8 +20,6 @@ const Recommend = () => {
   const [loading, setLoading] = useState<boolean>(false)
   const [totalPages, setTotalPages] = useState<number>(1)
 
-  // 使用统一的安装 Hook
-  const { installingAppId, handleInstall } = useAppInstall()
   const fetchData = useCallback(async() => {
     try {
       // 设置初始化的空卡片
@@ -123,10 +120,8 @@ const Recommend = () => {
             {recommendList.map((item, index) => (
               <ApplicationCard
                 key={`${item.appId}_${index}`}
-                options={item}
+                appInfo={item}
                 operateId={1}
-                loading={installingAppId === item.appId}
-                onInstall={handleInstall}
               />
             ))}
             {loading && <div className={styles.loadingTip}>加载中...</div>}

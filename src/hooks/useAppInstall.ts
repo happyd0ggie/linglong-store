@@ -71,7 +71,7 @@ export const useAppInstall = () => {
             installStatus: '准备安装...',
           })
         }
-        await installApp(app.appId, undefined, force)
+        await installApp(app.appId as string, undefined, force)
       }
 
       try {

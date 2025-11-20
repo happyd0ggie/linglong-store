@@ -4,7 +4,6 @@ import { useGlobalStore, useSearchStore } from '@/stores/global'
 import { getSearchAppList } from '@/apis/apps/index'
 import { useState, useEffect, useRef } from 'react'
 import { generateEmptyCards } from './utils'
-import { useAppInstall } from '@/hooks/useAppInstall'
 const defaultPageSize = 10 // 每页显示数量
 
 type AppInfo = API.APP.AppMainDto
@@ -18,8 +17,6 @@ const SearchList = ()=>{
   const [searchAppList, setSearchAppList] = useState<AppInfo[]>([])
   const listRef = useRef<HTMLDivElement>(null)
 
-  // 使用统一的安装 Hook
-  const { installingAppId, handleInstall } = useAppInstall()
   // 获取应用列表
   const getSearchKeyAppList = ({ pageNo = 1, init = false }) => {
     if (!keyword) {
@@ -106,10 +103,8 @@ const SearchList = ()=>{
           return (
             <ApplicationCard
               key={`${item.appId}_${index}`}
-              options={item}
+              appInfo={item}
               operateId={1}
-              loading={installingAppId === item.appId}
-              onInstall={handleInstall}
             />
           )
         })
