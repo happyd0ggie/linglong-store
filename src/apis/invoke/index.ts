@@ -4,7 +4,6 @@
  */
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { InstalledApp } from './types'
 
 /**
  * 获取正在运行的玲珑应用列表
@@ -26,9 +25,9 @@ export const killLinglongApp = async(appName: string) => {
 /**
  * 获取已安装的玲珑应用列表
  * @param includeBaseService - 是否包含基础服务
- * @returns Promise<InstalledApp[]> 已安装的应用列表
+ * @returns Promise<API.INVOKE.InstalledApp[]> 已安装的应用列表
  */
-export const getInstalledLinglongApps = async(includeBaseService = false): Promise<InstalledApp[]> => {
+export const getInstalledLinglongApps = async(includeBaseService = false): Promise<API.INVOKE.InstalledApp[]> => {
   return await invoke('get_installed_linglong_apps', { includeBaseService })
 }
 
