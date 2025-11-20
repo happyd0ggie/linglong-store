@@ -13,6 +13,7 @@ import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useDownloadConfigStore } from '@/stores/appConfig'
 import { useGlobalStore } from '@/stores/global'
 import { compareVersions } from '@/util/checkVersion'
+import { formatFileSize } from '@/util/format'
 
 interface VersionInfo extends API.APP.AppMainDto {
   version?: string
@@ -438,7 +439,7 @@ const AppDetail = () => {
       title: '文件大小',
       dataIndex: 'size',
       align: 'center',
-      render: (value: string | undefined) => value || '--',
+      render: (value: string | undefined) => formatFileSize(value),
     },
     {
       title: '下载量',
