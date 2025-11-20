@@ -4,7 +4,7 @@
  */
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { InstalledApp, InstallProgress, SearchResultItem } from './types'
+import type { InstalledApp } from './types'
 
 /**
  * 获取正在运行的玲珑应用列表
@@ -52,7 +52,7 @@ export const uninstallApp = async(
  */
 export const searchVersions = async(
   appId: string,
-): Promise<InstalledApp[]> => {
+): Promise<API.INVOKE.InstalledApp[]> => {
   return await invoke('search_versions', { appId })
 }
 
@@ -116,12 +116,15 @@ export const cancelInstallApp = async(appId: string): Promise<string> => {
  * ```
  */
 export const onInstallProgress = async(
-  callback: (progress: InstallProgress) => void,
+  callback: (progress: API.INVOKE.InstallProgress) => void,
 ): Promise<UnlistenFn> => {
-  return await listen<InstallProgress>('install-progress', (event) => {
-    console.log('[onInstallProgress] Received event:', event.payload)
-    callback(event.payload)
-  })
+  return await listen<API.INVOKE.InstallProgress>(
+    'install-progress',
+    (event) => {
+      console.log('[onInstallProgress] Received event:', event.payload)
+      callback(event.payload)
+    },
+  )
 }
 
 /**
@@ -157,6 +160,8 @@ export const onInstallCancelled = async(
  * @param appId - 应用ID
  * @returns Promise<SearchResultItem[]> 搜索结果
  */
-export const searchRemoteApp = async(appId: string): Promise<SearchResultItem[]> => {
+export const searchRemoteApp = async(
+  appId: string,
+): Promise<API.INVOKE.SearchResultItem[]> => {
   return await invoke('search_remote_app_cmd', { appId })
 }

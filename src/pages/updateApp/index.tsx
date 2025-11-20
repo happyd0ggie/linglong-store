@@ -4,7 +4,6 @@ import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useCheckUpdates, type UpdateInfo } from '@/hooks/useCheckUpdates'
 import { installApp } from '@/apis/invoke'
-import { OPERATE_ACTIONS } from '@/components/ApplicationCard/types'
 import DefaultImage from '@/assets/linyaps.svg'
 
 const UpdateApp = () => {
@@ -83,10 +82,8 @@ const UpdateApp = () => {
               {updates.map((app) => (
                 <div key={app.appId} className={styles.cardWrapper}>
                   <ApplicationCard
-                    operateId={OPERATE_ACTIONS.UPDATE}
-                    options={mapUpdateInfoToCardOptions(app)}
-                    loading={installingApps.has(app.appId)}
-                    onUpdate={() => handleUpdateApp(app)}
+                    operateId={4}
+                    appInfo={mapUpdateInfoToCardOptions(app)}
                   />
                 </div>
               ))}

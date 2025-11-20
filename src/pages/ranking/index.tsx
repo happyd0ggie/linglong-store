@@ -5,7 +5,6 @@ import { useGlobalStore } from '@/stores/global'
 import styles from './index.module.scss'
 import { useEffect, useState, useRef } from 'react'
 import { generateEmptyCards } from './utils'
-import { useAppInstall } from '@/hooks/useAppInstall'
 
 const defaultPageSize = 10 // 每页显示数量
 
@@ -19,10 +18,6 @@ const Ranking = () => {
   const [pageNo, setPageNo] = useState<number>(1)
   const [loading, setLoading] = useState<boolean>(false)
   const [totalPages, setTotalPages] = useState<number>(1)
-
-  // 使用统一的安装 Hook
-  const { installingAppId, handleInstall } = useAppInstall()
-
 
   // 获取应用列表函数
   const getRankAppList = ({ pageNo = 1, init = false })=>{
@@ -152,10 +147,8 @@ const Ranking = () => {
         {RankList.map((item, index) => (
           <ApplicationCard
             key={`${item.appId}_${index}`}
-            options={item}
+            appInfo={item}
             operateId={1}
-            loading={installingAppId === item.appId}
-            onInstall={handleInstall}
           />
         ))}
         {loading && <div className={styles.loadingTip}>加载中...</div>}

@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from 'react'
 import { getDisCategoryList, getSearchAppList } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
 import { generateEmptyCards, generateEmptyCategories } from './utils'
-import { useAppInstall } from '@/hooks/useAppInstall'
+import { OperateType } from '@/constants/applicationCard'
 
 const defaultPageSize = 30 // 每页显示数量
 const defaultCategorySize = 22 // 默认分类数量
@@ -25,9 +25,6 @@ const AllApps = () => {
   const [categoryList, setCategoryList] = useState<Category[]>([])
   const [allAppList, setAllAppList] = useState<AppInfo[]>([])
   const listRef = useRef<HTMLDivElement>(null)
-
-  // 使用统一的安装 Hook
-  const { installingAppId, handleInstall } = useAppInstall()
 
   // 获取分类列表
   const getCategoryList = async() => {
@@ -205,10 +202,8 @@ const AllApps = () => {
           return (
             <ApplicationCard
               key={`${item.appId}_${index}`}
-              options={item}
-              operateId={1}
-              loading={installingAppId === item.appId}
-              onInstall={handleInstall}
+              appInfo={item}
+              operateId={OperateType.INSTALL}
             />
           )
         })

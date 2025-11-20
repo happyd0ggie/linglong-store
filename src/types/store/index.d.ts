@@ -65,32 +65,32 @@ declare namespace Store {
    */
   interface InstalledApps {
     /** 已安装应用列表 */
-    installedApps: API.Invoke.InstalledApp[]
+    installedApps: API.INVOKE.InstalledApp[];
     /** 需要更新的应用列表 */
-    needUpdateApps: API.Invoke.InstalledApp[]
+    needUpdateApps: API.INVOKE.InstalledApp[];
 
     /**
      * 获取已安装应用列表
      * @param includeBaseService - 是否包含基础服务，默认为 false
      */
-    fetchInstalledApps: (includeBaseService?: boolean) => Promise<void>
+    fetchInstalledApps: (includeBaseService?: boolean) => Promise<void>;
 
     /**
      * 更新应用详情（从后端API获取图标、中文名称等）
      */
-    updateAppDetails: () => Promise<void>
+    updateAppDetails: () => Promise<void>;
 
     /**
      * 移除已卸载的应用
      * @param appId - 应用ID
      * @param version - 应用版本
      */
-    removeApp: (appId: string, version: string) => void
+    removeApp: (appId: string, version: string) => void;
 
     /**
      * 清空应用列表
      */
-    clearApps: () => void
+    clearApps: () => void;
   }
 
   /**

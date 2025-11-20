@@ -5,7 +5,6 @@ import type { TableColumnProps } from 'antd'
 import styles from './index.module.scss'
 import goBack from '@/assets/icons/go_back.svg'
 import DefaultIcon from '@/assets/linyaps.svg'
-import type { InstalledApp, InstallProgress } from '@/apis/invoke/types'
 
 import { getAppDetail, getSearchAppVersionList } from '@/apis/apps'
 import { searchVersions, uninstallApp, runApp, installApp, onInstallProgress, onInstallCancelled } from '@/apis/invoke'
@@ -22,7 +21,7 @@ interface VersionInfo extends API.APP.AppMainDto {
 const AppDetail = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const app = location.state as InstalledApp | undefined
+  const app = location.state as API.INVOKE.InstalledApp | undefined
 
   const [versions, setVersions] = useState<VersionInfo[]>([])
   const [installedVersionSet, setInstalledVersionSet] = useState<Set<string>>(new Set())
@@ -32,7 +31,7 @@ const AppDetail = () => {
   const [uninstallingVersion, setUninstallingVersion] = useState<string | null>(null)
   const [installingVersion, setInstallingVersion] = useState<string | null>(null)
   const [isInstalling, setIsInstalling] = useState(false)
-  const [installProgress, setInstallProgress] = useState<InstallProgress | null>(null)
+  const [installProgress, setInstallProgress] = useState<API.INVOKE.InstallProgress | null>(null)
   const removeApp = useInstalledAppsStore((state) => state.removeApp)
   const installedApps = useInstalledAppsStore((state) => state.installedApps)
   const arch = useGlobalStore((state) => state.arch)
