@@ -99,6 +99,7 @@ const AppDetail = () => {
 
         if (progress.progress === 'error') {
           console.info('[useEffect] Installation failed for current app, resetting state')
+          message.error({ content: progress.status || '安装失败', key: 'install' })
           installCompletionRef.current = true
           resetInstallState({ immediate: true })
           return

@@ -3,6 +3,7 @@ use std::process::Command;
 use std::io::Read;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize, Child};
@@ -387,6 +388,7 @@ pub async fn install_linglong_app(
     let force_hint_detected = Arc::new(AtomicBool::new(false));
     let force_hint_message = Arc::new(Mutex::new(None::<String>));
     let last_cli_message = Arc::new(Mutex::new(None::<String>));
+    let auth_wait_start = Arc::new(Mutex::new(None::<Instant>));
 
     // 将进程包装在 Arc<Mutex<>> 中，以便可以在多个地方访问
     let child_arc = Arc::new(Mutex::new(child));
@@ -429,6 +431,7 @@ pub async fn install_linglong_app(
     let force_hint_detected_reader = force_hint_detected.clone();
     let force_hint_message_reader = force_hint_message.clone();
     let last_cli_message_reader = last_cli_message.clone();
+    let auth_wait_start_reader = auth_wait_start.clone();
 
     let reader_handle = std::thread::spawn(move || {
             let mut buffer = [0u8; 8192];  // 增大缓冲区
@@ -478,6 +481,22 @@ pub async fn install_linglong_app(
                                 record_cli_output(&line);
                                 let progress_info = parse_install_progress(&line, &app_id_clone);
 
+                                // 更新授权等待状态
+                                if let Ok(mut auth_guard) = auth_wait_start_reader.lock() {
+                                    if progress_info.status == "等待授权" {
+                                        if auth_guard.is_none() {
+                                            println!("[PTY] Detected auth request, starting timer");
+                                            *auth_guard = Some(Instant::now());
+                                        }
+                                    } else if !progress_info.status.is_empty() && progress_info.status != "正在处理" {
+                                        // 如果状态变了（且不是默认的正在处理），清除计时器
+                                        if auth_guard.is_some() {
+                                            println!("[PTY] Auth state cleared, status: {}", progress_info.status);
+                                            *auth_guard = None;
+                                        }
+                                    }
+                                }
+
                                 // 只有当百分比变化时才发送事件，避免大量重复更新
                                 // 或者当状态为"安装失败"时，强制发送
                                 if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
@@ -497,6 +516,21 @@ pub async fn install_linglong_app(
                     if line_buffer.contains('%') && line_buffer.contains('\r') {
                             record_cli_output(&line_buffer);
                             let progress_info = parse_install_progress(&line_buffer, &app_id_clone);
+
+                            // 更新授权等待状态
+                            if let Ok(mut auth_guard) = auth_wait_start_reader.lock() {
+                                if progress_info.status == "等待授权" {
+                                    if auth_guard.is_none() {
+                                        println!("[PTY] Detected auth request (partial), starting timer");
+                                        *auth_guard = Some(Instant::now());
+                                    }
+                                } else if !progress_info.status.is_empty() && progress_info.status != "正在处理" {
+                                    if auth_guard.is_some() {
+                                        println!("[PTY] Auth state cleared (partial), status: {}", progress_info.status);
+                                        *auth_guard = None;
+                                    }
+                                }
+                            }
 
                             if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
                                 println!("[PTY] Progress changed (partial): {}% -> {}%", last_percentage, progress_info.percentage);
@@ -555,6 +589,32 @@ pub async fn install_linglong_app(
             }
         }; // 锁在这里释放
 
+        // 检查授权超时 (60秒)
+        {
+            if let Ok(auth_guard) = auth_wait_start.lock() {
+                if let Some(start_time) = *auth_guard {
+                    if start_time.elapsed().as_secs() > 60 {
+                        println!("[install_linglong_app] Authorization timed out (>60s). Killing process...");
+                        
+                        // 尝试终止进程
+                        if let Ok(mut child) = child_arc.lock() {
+                             let _ = child.kill();
+                        }
+                        
+                        // 发送超时错误事件
+                         let _ = app_handle.emit("install-progress", &InstallProgress {
+                            app_id: app_id.clone(),
+                            progress: "error".to_string(),
+                            percentage: 0,
+                            status: "安装失败: 授权超时".to_string(),
+                        });
+                        
+                        return Err("Authorization timed out".to_string());
+                    }
+                }
+            }
+        }
+
         if let Some(status) = status {
                 break status;
         }
@@ -600,13 +660,26 @@ pub async fn install_linglong_app(
 
         println!("[install_linglong_app] ERROR: {}", failure_message);
 
+        // Determine status message based on failure reason
+        let status_msg = if failure_message.contains("Request dismissed") 
+            || failure_message.contains("Authentication is required") 
+            || failure_message.contains("AUTHENTICATING FOR") {
+            "安装失败: 授权失败".to_string()
+        } else {
+            "安装失败".to_string()
+        };
+
         // 发送失败事件
         let _ = app_handle.emit("install-progress", &InstallProgress {
                 app_id: app_id.clone(),
                 progress: "error".to_string(),
             percentage: 0,
-            status: "安装失败".to_string(),
+            status: status_msg.clone(),
         });
+
+        if status_msg.contains("授权失败") {
+            return Err(status_msg);
+        }
 
         return Err(failure_message);
     }
@@ -713,6 +786,8 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
             "正在下载".to_string()
     } else if latest_progress.contains("install") || latest_progress.contains("安装") {
             "正在安装".to_string()
+    } else if latest_progress.contains("Authentication is required") || latest_progress.contains("AUTHENTICATING FOR") || latest_progress.contains("Authenticating as") {
+            "等待授权".to_string()
     } else if latest_progress.contains("Error executing command as another user: Request dismissed") {
             "安装失败".to_string()
     } else if latest_progress.to_lowercase().contains("error") || latest_progress.contains("错误") || latest_progress.to_lowercase().contains("failed") {
