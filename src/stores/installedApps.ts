@@ -2,7 +2,7 @@
  * 已安装应用状态管理模块
  */
 import { create } from 'zustand'
-import { getInstalledLinglongApps, getAllInstalledLinglongApps } from '@/apis/invoke'
+import { getInstalledLinglongApps } from '@/apis/invoke'
 import { getAppDetails } from '@/apis/apps'
 import { message } from 'antd'
 
@@ -16,9 +16,7 @@ export const useInstalledAppsStore = create<Store.InstalledApps>((set, get) => (
   fetchInstalledApps: async(includeBaseService = false) => {
     try {
       // 调用 Tauri 命令获取已安装应用（后端已过滤）
-      const apps = includeBaseService
-        ? await getAllInstalledLinglongApps()
-        : await getInstalledLinglongApps()
+      const apps = await getInstalledLinglongApps(includeBaseService)
 
       // 更新应用列表
       set({ installedApps: apps })

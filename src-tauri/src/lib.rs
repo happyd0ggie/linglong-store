@@ -4,7 +4,6 @@ use services::network::{get_network_speed as network_get_speed, NetworkSpeed};
 use services::process::{get_running_linglong_apps as process_get_running_apps, kill_linglong_app as process_kill_app, LinglongAppInfo};
 use services::installed::{
     get_installed_apps,
-    get_all_installed_apps,
     uninstall_linglong_app,
     search_app_versions,
     run_linglong_app,
@@ -42,13 +41,8 @@ async fn kill_linglong_app(app_name: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn get_installed_linglong_apps() -> Result<Vec<InstalledApp>, String> {
-    get_installed_apps().await
-}
-
-#[tauri::command]
-async fn get_all_installed_linglong_apps() -> Result<Vec<InstalledApp>, String> {
-    get_all_installed_apps().await
+async fn get_installed_linglong_apps(include_base_service: bool) -> Result<Vec<InstalledApp>, String> {
+    get_installed_apps(include_base_service).await
 }
 
 #[tauri::command]
@@ -103,7 +97,6 @@ pub fn run() {
             get_running_linglong_apps,
             kill_linglong_app,
             get_installed_linglong_apps,
-            get_all_installed_linglong_apps,
             uninstall_app,
             search_versions,
             run_app,

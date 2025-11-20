@@ -24,21 +24,12 @@ export const killLinglongApp = async(appName: string) => {
 }
 
 /**
- * 获取已安装的玲珑应用列表（不包含基础服务）
+ * 获取已安装的玲珑应用列表
+ * @param includeBaseService - 是否包含基础服务
  * @returns Promise<InstalledApp[]> 已安装的应用列表
  */
-export const getInstalledLinglongApps = async(): Promise<InstalledApp[]> => {
-  return await invoke('get_installed_linglong_apps')
-}
-
-/**
- * 获取所有已安装的玲珑应用列表（包含基础服务）
- * @returns Promise<InstalledApp[]> 所有已安装的应用列表
- */
-export const getAllInstalledLinglongApps = async(): Promise<
-  InstalledApp[]
-> => {
-  return await invoke('get_all_installed_linglong_apps')
+export const getInstalledLinglongApps = async(includeBaseService = false): Promise<InstalledApp[]> => {
+  return await invoke('get_installed_linglong_apps', { includeBaseService })
 }
 
 /**

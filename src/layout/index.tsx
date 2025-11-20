@@ -14,8 +14,8 @@ import Loading from '../components/Loading'
 
 import { useGlobalStore } from '@/stores/global'
 import { useUpdatesStore } from '@/stores/updates'
-// import { useConfigStore } from '@/stores/appConfig'
-// import { useInstalledAppsStore } from '@/stores/installedApps'
+import { useConfigStore } from '@/stores/appConfig'
+import { useInstalledAppsStore } from '@/stores/installedApps'
 // import { arch } from '@tauri-apps/plugin-os'
 
 // 暂时注释的 Antd Layout 组件，可能用于未来的布局重构
@@ -43,19 +43,19 @@ const AppLayout = () => {
   // const changeArch = useGlobalStore((state) => state.setArch)
 
 
-  // /** 从已安装应用store中获取更新和加载方法 */
-  // const {
-  //   needUpdateApps,
-  //   fetchInstalledApps,
-  // } = useInstalledAppsStore()
+  /** 从已安装应用store中获取更新和加载方法 */
+  const {
+    // needUpdateApps,
+    fetchInstalledApps,
+  } = useInstalledAppsStore()
 
-  // /** 从配置store中获取是否显示基础服务的设置 */
-  // const { showBaseService } = useConfigStore()
+  /** 从配置store中获取是否显示基础服务的设置 */
+  const { showBaseService } = useConfigStore()
 
-  // /** 监听基础服务显示配置变化，重新加载应用列表 */
-  // useEffect(() => {
-  //   fetchInstalledApps(showBaseService)
-  // }, [showBaseService, fetchInstalledApps])
+  /** 监听基础服务显示配置变化，重新加载应用列表 */
+  useEffect(() => {
+    fetchInstalledApps(showBaseService)
+  }, [showBaseService, fetchInstalledApps])
 
   // /**
   //  * 应用初始化效果
