@@ -6,13 +6,14 @@
 
 import styles from './index.module.scss'
 import { Outlet } from 'react-router-dom'
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import Titlebar from './titlebar'
 import Sidebar from './sidebar'
 import LaunchPage from './launchPage'
 import Loading from '../components/Loading'
 
 import { useGlobalStore } from '@/stores/global'
+import { useUpdatesStore } from '@/stores/updates'
 // import { useConfigStore } from '@/stores/appConfig'
 // import { useInstalledAppsStore } from '@/stores/installedApps'
 // import { arch } from '@tauri-apps/plugin-os'
@@ -27,6 +28,15 @@ import { useGlobalStore } from '@/stores/global'
  */
 const AppLayout = () => {
   const { isInited } = useGlobalStore()
+  const startAutoRefresh = useUpdatesStore(state => state.startAutoRefresh)
+  const stopAutoRefresh = useUpdatesStore(state => state.stopAutoRefresh)
+
+  useEffect(() => {
+    startAutoRefresh()
+    return () => {
+      stopAutoRefresh()
+    }
+  }, [startAutoRefresh, stopAutoRefresh])
   // // 从全局状态store中获取初始化相关方法
   // const onInited = useGlobalStore((state) => state.onInited)
   // const getUpdateAppNum = useGlobalStore((state) => state.getUpdateAppNum)

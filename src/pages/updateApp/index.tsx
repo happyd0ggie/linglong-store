@@ -1,5 +1,5 @@
 import { Spin, Empty, Button, message } from 'antd'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useCheckUpdates, type UpdateInfo } from '@/hooks/useCheckUpdates'
@@ -8,13 +8,9 @@ import { OPERATE_ACTIONS } from '@/components/ApplicationCard/types'
 import DefaultImage from '@/assets/linyaps.svg'
 
 const UpdateApp = () => {
-  const { loading: checking, updates, checkUpdates } = useCheckUpdates()
+  const { loading: checking, updates } = useCheckUpdates()
   const [installingApps, setInstallingApps] = useState<Set<string>>(new Set())
   const [updatingAll, setUpdatingAll] = useState(false)
-
-  useEffect(() => {
-    checkUpdates()
-  }, [checkUpdates])
 
   const handleUpdateApp = async(app: UpdateInfo) => {
     if (installingApps.has(app.appId)) {
@@ -73,7 +69,7 @@ const UpdateApp = () => {
     description: info.description,
     icon: info.icon,
     arch: info.arch,
-    zhName: info.name, // 暂时使用 name 作为 zhName
+    zhName: info.zhName || info.name,
   })
 
   return (
