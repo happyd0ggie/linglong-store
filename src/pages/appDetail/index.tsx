@@ -12,6 +12,7 @@ import { searchVersions, uninstallApp, runApp, installApp, onInstallProgress, on
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useDownloadConfigStore } from '@/stores/appConfig'
 import { useGlobalStore } from '@/stores/global'
+import { compareVersions } from '@/util/checkVersion'
 
 interface VersionInfo extends API.APP.AppMainDto {
   version?: string
@@ -189,7 +190,9 @@ const AppDetail = () => {
         repoName,
         arch,
       })
-      setVersions(res.data || [])
+      const list = [...(res.data || [])]
+      list.sort((a, b) => compareVersions(b.version || '', a.version || ''))
+      setVersions(list)
     } catch (err) {
       console.error('loadVersions: error', err)
       message.error(`加载版本列表失败: ${err instanceof Error ? err.message : String(err)}`)
