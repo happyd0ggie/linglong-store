@@ -4,7 +4,6 @@ import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useCheckUpdates, type UpdateInfo } from '@/hooks/useCheckUpdates'
 import { installApp } from '@/apis/invoke'
-import DefaultImage from '@/assets/linyaps.svg'
 
 const UpdateApp = () => {
   const { loading: checking, updates } = useCheckUpdates()
@@ -105,9 +104,6 @@ const UpdateApp = () => {
         ) : (
           !checking && (
             <div className={styles.emptyContainer}>
-              <div style={{ width: 180, height: 180, margin: '0 auto' }}>
-                <img src={DefaultImage} alt="No Data" style={{ width: '100%', height: '100%' }} />
-              </div>
               <Empty description="暂无需更新应用" image={null} />
             </div>
           )
