@@ -100,11 +100,11 @@ export const appLogin = (data: API.APP.AppLoginSaveVO) => {
 
 /**
  * 意见反馈
- * @param data 反馈数据
+ * @param data 反馈信息
  * @returns 操作结果
  */
-export const suggest = (data: API.APP.AppLoginSaveVO) => {
-  return post<API.Common.BaseResponse<null>>('/visit/suggest', data)
+export const suggest = (data: API.APP.AppLoginSaveBO) => {
+  return post<API.Common.BaseResponse<string>>('/web/suggest', data)
 }
 
 /**

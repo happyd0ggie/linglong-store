@@ -232,6 +232,36 @@ declare namespace API {
         }
 
         /**
+         * 意见反馈参数
+         */
+        interface AppLoginSaveBO {
+            /** 访问者IP */
+            visit?: string
+            /** 客户端指纹码 */
+            visitorId?: string
+            /** 玲珑组件版本 */
+            llVersion?: string
+            /** 玲珑Bin组件版本 */
+            llBinVersion?: string
+            /** 商店版本 */
+            appVersion?: string
+            /** 玲珑基本组件版本信息 */
+            detailMsg?: string
+            /** 系统版本信息 */
+            osVersion?: string
+            /** 反馈意见内容 */
+            message?: string
+            /** 创建时间 */
+            createTime?: string
+            /** 是否删除 */
+            isDelete?: string
+            /** 客户端IP */
+            clientIp?: string
+            /** 系统架构 */
+            arch?: string
+        }
+
+        /**
          * 基础配置详情
          */
         interface BaseConfigDtl {

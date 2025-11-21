@@ -4,7 +4,7 @@ import feedback from '@/assets/icons/feedback.svg'
 import update from '@/assets/icons/update.svg'
 import { useState, useEffect, useMemo } from 'react'
 import { getLlCliVersion } from '@/apis/invoke'
-import { getSearchAppList } from '@/apis/apps/index'
+import { getSearchAppList, suggest } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
 import TextArea from 'antd/es/input/TextArea'
 
@@ -25,6 +25,7 @@ const AboutSoft = () => {
   const [linglongCount, setLinglongCount] = useState<string>('未知')
   const repoName = useGlobalStore((state) => state.repoName)
   const arch = useGlobalStore((state) => state.arch)
+  const appVersion = useGlobalStore((state) => state.appVersion)
 
   const linglongData = useMemo(() => [
     {
@@ -44,7 +45,7 @@ const AboutSoft = () => {
   const versionData = useMemo(() => [
     {
       label: '当前商店版本',
-      value: '2.0.0-beta',
+      value: appVersion,
     },
     {
       label: '当前玲珑组件版本',
@@ -88,10 +89,28 @@ const AboutSoft = () => {
     setOpen(false)
   }
 
-  const onClickSubmitForm: FormProps<FieldType>['onFinish'] = (values) => {
+  const onClickSubmitForm: FormProps<FieldType>['onFinish'] = async(values) => {
     console.log('提交反馈数据: ', values)
-    messageApi.success('感谢您的反馈', 1)
-    setOpen(false)
+    try {
+      const msg = `分类: ${values.classification?.join(', ') || '无'}\n概述: ${values.overview || '无'}\n描述: ${values.description || '无'}`
+      const res = await suggest({
+        message: msg,
+        llVersion: linglongVersion,
+        appVersion: appVersion,
+        arch: arch,
+        visitorId: `repo|${repoName}`,
+      })
+      if (res.code === 200) {
+        messageApi.success('感谢您的反馈', 1)
+        setOpen(false)
+        form.resetFields()
+      } else {
+        messageApi.error(res.message || '反馈提交失败')
+      }
+    } catch (error) {
+      console.error('Feedback error:', error)
+      messageApi.error('反馈提交失败')
+    }
   }
 
   useEffect(() => {
@@ -162,7 +181,7 @@ const AboutSoft = () => {
       <div className={styles.feedback}>
         <div className={styles.feed} onClick={feedbackClick}>  <img style={{ width: '1.1rem', height: '1.1rem' }} src={feedback} alt="意见反馈" /><span>意见反馈</span></div>
         {contextHolder}
-        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={update} alt="检查版本" /><span>检查版本</span></div>
+        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={update} alt="检查新版本" /><span>检查版本</span></div>
       </div>
       <Drawer
         title="意见反馈"

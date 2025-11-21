@@ -36,6 +36,8 @@ declare namespace Store {
     repoName: string
     /** 需要更新的应用数量 */
     updateAppNum: number
+    /** 当前客户端/商店版本（来自 package.json） */
+    appVersion: string
     /** 初始化完成回调 */
     onInited: () => void
     /** 更改系统架构 */
@@ -44,6 +46,8 @@ declare namespace Store {
     setRepoName: (value: string) => void
     /** 更新需要更新的应用数量 */
     getUpdateAppNum: (num: number) => void
+    /** 更新 app 版本号 */
+    setAppVersion: (value: string) => void
   }
 
   /**
