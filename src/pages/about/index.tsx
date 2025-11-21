@@ -2,7 +2,7 @@ import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, Modal, 
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
 import update from '@/assets/icons/update.svg'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getLlCliVersion } from '@/apis/invoke'
 import { getSearchAppList } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
@@ -23,12 +23,10 @@ const AboutSoft = () => {
   const [form] = Form.useForm()
   const [linglongVersion, setLinglongVersion] = useState<string>('1.7.4')
   const [linglongCount, setLinglongCount] = useState<string>('未知')
-  const { repoName, arch } = useGlobalStore((state) => ({
-    repoName: state.repoName,
-    arch: state.arch,
-  }))
+  const repoName = useGlobalStore((state) => state.repoName)
+  const arch = useGlobalStore((state) => state.arch)
 
-  const linglongData = [
+  const linglongData = useMemo(() => [
     {
       label: '玲珑官网',
       value: 'https://linglong.space/',
@@ -41,9 +39,9 @@ const AboutSoft = () => {
       label: '当前已收录玲珑程序数',
       value: linglongCount === '未知' ? '未知' : `${linglongCount} 个`,
     },
-  ]
+  ], [linglongCount])
 
-  const versionData = [
+  const versionData = useMemo(() => [
     {
       label: '当前商店版本',
       value: '2.0.0-beta',
@@ -64,7 +62,13 @@ const AboutSoft = () => {
       label: 'GitHub地址',
       value: 'https://github.com/GershonWang/linglong-store',
     },
-  ]
+  ], [linglongVersion])
+
+  const descriptionStyles = useMemo(() => ({
+    header: {
+      marginBottom: 0,
+    },
+  }), [])
 
   const checkVersionClick = () => {
     console.log('检查版本更新逻辑')
@@ -134,11 +138,7 @@ const AboutSoft = () => {
       <div className={styles.app_info}>
         <Descriptions
           className={styles.des_name}
-          styles={{
-            header: {
-              marginBottom: 0,
-            },
-          }}
+          styles={descriptionStyles}
           colon={true}
           layout="horizontal"
           column={1}
@@ -150,11 +150,7 @@ const AboutSoft = () => {
       <div className={styles.version_info}>
         <Descriptions
           className={styles.des_name}
-          styles={{
-            header: {
-              marginBottom: 0,
-            },
-          }}
+          styles={descriptionStyles}
           colon={true}
           layout="horizontal"
           column={1}
