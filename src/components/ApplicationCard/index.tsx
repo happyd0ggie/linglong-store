@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import DefaultIcon from '@/assets/linyaps.svg'
 
-import { uninstallApp } from '@/apis/invoke'
+import { uninstallApp, runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useAppInstall } from '@/hooks/useAppInstall'
+import { compareVersions } from '@/util/checkVersion'
 
 import { OperateType } from '@/constants/applicationCard'
 
@@ -31,7 +32,7 @@ const ApplicationCard = ({
 
   const { handleInstall } = useAppInstall()
 
-  const { removeApp } = useInstalledAppsStore()
+  const { installedApps, removeApp } = useInstalledAppsStore()
 
   useEffect(() => {
     if (appInfo && appInfo.appId && !appInfo.appId.startsWith('empty-')) {
@@ -41,10 +42,36 @@ const ApplicationCard = ({
     }
   }, [appInfo])
 
-  // 缓存当前操作按钮配置
+  // 根据 store 中的安装状态和版本对比，决定展示的操作类型
+  const resolvedOperateId = useMemo(() => {
+    if (!appInfo?.appId) {
+      return operateId
+    }
+
+    const installedApp = installedApps.find(app => app.appId === appInfo.appId)
+    if (!installedApp) {
+      // 应用未安装，显示安装按钮
+      return OperateType.INSTALL
+    }
+
+    // 应用已安装，检查是否有更新
+    if (appInfo.version && installedApp.version && compareVersions(appInfo.version, installedApp.version) > 0) {
+      return OperateType.UPDATE
+    }
+
+    // 应用已安装且无更新，默认显示打开按钮
+    // 只有当参数明确指定为卸载时才显示卸载按钮
+    if (operateId === OperateType.UNINSTALL) {
+      return OperateType.UNINSTALL
+    }
+
+    return OperateType.OPEN
+  }, [appInfo?.appId, appInfo.version, installedApps, operateId])
+
+  // 计算当前显示的操作按钮
   const currentOperate = useMemo(() => {
-    return OPERATE_LIST[operateId] || OPERATE_LIST[OperateType.INSTALL]
-  }, [operateId])
+    return OPERATE_LIST[resolvedOperateId] || OPERATE_LIST[OperateType.INSTALL]
+  }, [resolvedOperateId])
 
   // 获取图标 URL
   const iconUrl = useMemo(() => {
@@ -66,16 +93,16 @@ const ApplicationCard = ({
 
     setButtonLoading(true)
 
-    if (operateId === OperateType.UNINSTALL) {
+    if (resolvedOperateId === OperateType.UNINSTALL) {
       if (!appInfo.appId || !appInfo.version) {
         setButtonLoading(false)
         return
       }
-      // 处理卸载操作
+      // 确认卸载操作
       Modal.confirm({
         title: '确认卸载',
-        content: `确定要卸载 ${appInfo.zhName || appInfo.name || appInfo.appId} 的版本 ${appInfo.version} 吗？`,
-        okText: '确定',
+        content: `确认要卸载 ${appInfo.zhName || appInfo.name || appInfo.appId} 的版本 ${appInfo.version} 吗`,
+        okText: '确认',
         cancelText: '取消',
         onOk: async() => {
           try {
@@ -95,18 +122,42 @@ const ApplicationCard = ({
       })
     }
 
-    // 如果是安装操作且提供了回调函数，调用安装
-    if (operateId === OperateType.INSTALL) {
+    // 如果是安装操作，调用安装
+    if (resolvedOperateId === OperateType.INSTALL) {
       handleInstall(appInfo as API.APP.AppMainDto).finally(() => {
         setButtonLoading(false)
       })
     }
 
-    // 如果是更新操作且提供了回调函数，调用更新
-    if (operateId === OperateType.UPDATE) {
-      // onUpdate(appInfo)
+    // 更新操作直接复用安装逻辑
+    if (resolvedOperateId === OperateType.UPDATE) {
+      handleInstall(appInfo as API.APP.AppMainDto).finally(() => {
+        setButtonLoading(false)
+      })
     }
-  }, [operateId, appInfo])
+
+    // 打开操作
+    if (resolvedOperateId === OperateType.OPEN) {
+      if (!appInfo.appId) {
+        setButtonLoading(false)
+        return
+      }
+
+      const handleRunApp = async() => {
+        try {
+          await runApp(appInfo.appId as string)
+          message.success('应用启动成功')
+        } catch (error) {
+          console.error('[handleRunApp] 启动应用失败:', error)
+          message.error(`启动应用失败: ${error}`)
+        } finally {
+          setButtonLoading(false)
+        }
+      }
+
+      handleRunApp()
+    }
+  }, [resolvedOperateId, appInfo, handleInstall, removeApp, runApp])
 
   return (
     <div
@@ -125,8 +176,8 @@ const ApplicationCard = ({
         </div>
 
         <div className={styles.description}>
-          <Paragraph ellipsis={{ tooltip: appInfo.description || '应用描述', rows: 2, expandable: false }}>
-            {appInfo.description || '应用描述'}
+          <Paragraph ellipsis={{ tooltip: appInfo.description || '应用简介', rows: 2, expandable: false }}>
+            {appInfo.description || '应用简介'}
           </Paragraph>
         </div>
 
@@ -139,7 +190,12 @@ const ApplicationCard = ({
 
       <div className={styles.actions}>
         <Button
-          type="primary"
+          type='primary'
+          style={
+            resolvedOperateId === OperateType.OPEN
+              ? { backgroundColor: '#1AD56C', borderColor: '#1AD56C' } // 绿色
+              : {}
+          }
           className={styles.installButton}
           size="small"
           loading={buttonLoading}
