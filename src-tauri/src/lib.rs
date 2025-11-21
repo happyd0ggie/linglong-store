@@ -11,7 +11,7 @@ use services::installed::{
     cancel_install_app,
     InstalledApp,
 };
-use services::linglong::{search_remote_app, SearchResultItem};
+use services::linglong::{search_remote_app, get_ll_cli_version, SearchResultItem};
 pub mod modules;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -23,6 +23,11 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 async fn search_remote_app_cmd(app_id: String) -> Result<Vec<SearchResultItem>, String> {
     search_remote_app(app_id).await
+}
+
+#[tauri::command]
+async fn get_ll_cli_version_cmd() -> Result<String, String> {
+    get_ll_cli_version().await
 }
 
 #[tauri::command]
@@ -103,6 +108,7 @@ pub fn run() {
             install_app,
             cancel_install,
             search_remote_app_cmd
+            , get_ll_cli_version_cmd
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

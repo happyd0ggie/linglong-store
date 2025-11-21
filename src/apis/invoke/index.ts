@@ -164,3 +164,11 @@ export const searchRemoteApp = async(
 ): Promise<API.INVOKE.SearchResultItem[]> => {
   return await invoke('search_remote_app_cmd', { appId })
 }
+
+/**
+ * 获取 ll-cli 版本
+ * @returns Promise<string> 例如: "linyaps CLI version 1.9.9"
+ */
+export const getLlCliVersion = async(): Promise<string> => {
+  return await invoke('get_ll_cli_version_cmd')
+}

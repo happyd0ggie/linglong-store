@@ -2,7 +2,8 @@ import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, Modal, 
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
 import update from '@/assets/icons/update.svg'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getLlCliVersion } from '@/apis/invoke'
 import TextArea from 'antd/es/input/TextArea'
 type FieldType = {
   classification?: string[];
@@ -17,6 +18,7 @@ const AboutSoft = () => {
   const [modalOpen, setModalOpen] = useState(false)
   const [messageApi, contextHolder] = message.useMessage()
   const [form] = Form.useForm()
+  const [linglongVersion, setLinglongVersion] = useState<string>('1.7.4')
   const linglong_data = [
     {
       label: '玲珑官网',
@@ -38,7 +40,7 @@ const AboutSoft = () => {
     },
     {
       label: '当前玲珑组件版本',
-      value: '1.7.4',
+      value: linglongVersion,
     },
     {
       label: '开发作者',
@@ -76,6 +78,20 @@ const AboutSoft = () => {
     messageApi.success('感谢您的反馈！', 1)
     setOpen(false)
   }
+
+  useEffect(()=>{
+    // 获取 ll-cli 版本并显示
+    getLlCliVersion()
+      .then((v) => {
+        if (v) {
+          setLinglongVersion(v as string)
+        }
+      })
+      .catch((e) => {
+        console.warn('Failed to get ll-cli version:', e)
+        setLinglongVersion('未知')
+      })
+  }, [])
   return (
     <div className={styles.aboutPage}>
       <p className={styles.about_app}>关于程序</p>
