@@ -46,7 +46,7 @@ const AboutSoft = () => {
     },
     {
       label: '码云地址',
-      value: 'https://gitee.com/okul2018/linglong_store',
+      value: 'https://gitee.com/jokul2018/linglong_store',
     },
     {
       label: 'github地址',
