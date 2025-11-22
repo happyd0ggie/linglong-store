@@ -187,7 +187,7 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
               value={realKeyword}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder='搜索'
+              placeholder='在这里搜索你想搜索的应用'
             />
           </div>
           <div className={styles.inputIcon}>
