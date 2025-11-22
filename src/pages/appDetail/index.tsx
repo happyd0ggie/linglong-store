@@ -163,6 +163,8 @@ const AppDetail = () => {
     return installedVersionSet.has(latestVersion)
   }, [latestVersion, installedVersionSet])
 
+  const hasInstalledVersion = useMemo(() => installedVersionSet.size > 0, [installedVersionSet])
+
   const refreshInstalledVersions = async(): Promise<Set<string>> => {
     if (!currentApp?.appId) {
       console.info('refreshInstalledVersions: missing appId')
@@ -586,7 +588,7 @@ const AppDetail = () => {
                   loading={isInstalling}
                   disabled={isInstalling}
                 >
-                  {isInstalling ? '安装中...' : (isLatestVersionInstalled ? '启动' : '更新')}
+                  {isInstalling ? '安装中...' : (isLatestVersionInstalled ? '启动' : (hasInstalledVersion ? '更新' : '安装'))}
                 </Button>
                 {isInstalling && installProgress && (
                   <div style={{ marginTop: '12px', width: '100%' }}>

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
@@ -373,6 +373,14 @@ pub async fn install_linglong_app(
     println!("[install_linglong_app] Starting to read PTY output...");
     println!("==========================================================");
 
+    let pty_writer = match pty_pair.master.take_writer() {
+        Ok(writer) => Some(Arc::new(Mutex::new(writer))),
+        Err(e) => {
+            println!("[install_linglong_app] WARN: Failed to take PTY writer: {}", e);
+            None
+        }
+    };
+
     // 在单独的线程中读取 PTY 输出
     let app_id_clone = app_id.clone();
     let app_handle_clone = app_handle.clone();
@@ -380,6 +388,9 @@ pub async fn install_linglong_app(
     let force_hint_message_reader = force_hint_message.clone();
     let last_cli_message_reader = last_cli_message.clone();
     let auth_wait_start_reader = auth_wait_start.clone();
+    let auto_confirm_sent = Arc::new(AtomicBool::new(false));
+    let auto_confirm_sent_reader = auto_confirm_sent.clone();
+    let pty_writer_reader = pty_writer.clone();
 
     let reader_handle = std::thread::spawn(move || {
             let mut buffer = [0u8; 8192];  // 增大缓冲区
@@ -403,6 +414,24 @@ pub async fn install_linglong_app(
                     if let Ok(mut msg_guard) = force_hint_message_reader.lock() {
                         if msg_guard.is_none() {
                             *msg_guard = Some(trimmed_line.to_string());
+                    }
+                }
+            }
+
+            let lower = trimmed_line.to_ascii_lowercase();
+            if !auto_confirm_sent_reader.load(Ordering::Relaxed)
+                && (lower.contains("available actions") || lower.contains("your choice"))
+            {
+                if let Some(writer) = &pty_writer_reader {
+                    if let Ok(mut guard) = writer.lock() {
+                        if let Err(e) = guard.write_all(b"Yes\n") {
+                            println!("[PTY Writer] WARN: failed to write auto confirm: {}", e);
+                        } else if let Err(e) = guard.flush() {
+                            println!("[PTY Writer] WARN: failed to flush auto confirm: {}", e);
+                        } else {
+                            println!("[PTY Writer] Auto-confirmed prompt with 'Yes'");
+                            auto_confirm_sent_reader.store(true, Ordering::Relaxed);
+                        }
                     }
                 }
             }
