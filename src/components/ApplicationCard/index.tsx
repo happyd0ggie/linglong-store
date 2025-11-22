@@ -6,6 +6,7 @@ import DefaultIcon from '@/assets/linyaps.svg'
 
 import { uninstallApp, runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
+import { useUpdatesStore } from '@/stores/updates'
 import { useAppInstall } from '@/hooks/useAppInstall'
 import { compareVersions } from '@/util/checkVersion'
 
@@ -33,6 +34,7 @@ const ApplicationCard = ({
   const { handleInstall } = useAppInstall()
 
   const { installedApps, removeApp } = useInstalledAppsStore()
+  const updates = useUpdatesStore(state => state.updates)
 
   useEffect(() => {
     if (appInfo && appInfo.appId && !appInfo.appId.startsWith('empty-')) {
@@ -54,8 +56,13 @@ const ApplicationCard = ({
       return OperateType.INSTALL
     }
 
+    const hasUpdateInStore = updates.some(update => update.appId === appInfo.appId)
+
     // 应用已安装，检查是否有更新
-    if (appInfo.version && installedApp.version && compareVersions(appInfo.version, installedApp.version) > 0) {
+    if (
+      (appInfo.version && installedApp.version && compareVersions(appInfo.version, installedApp.version) > 0)
+      || hasUpdateInStore
+    ) {
       return OperateType.UPDATE
     }
 
@@ -66,7 +73,7 @@ const ApplicationCard = ({
     }
 
     return OperateType.OPEN
-  }, [appInfo?.appId, appInfo.version, installedApps, operateId])
+  }, [appInfo?.appId, appInfo.version, installedApps, operateId, updates])
 
   // 计算当前显示的操作按钮
   const currentOperate = useMemo(() => {
