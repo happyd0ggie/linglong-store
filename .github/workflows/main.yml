@@ -12,7 +12,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-22.04]
+        include:
+          - platform: ubuntu-22.04
+            arch: x86_64
+            rust-target: x86_64-unknown-linux-gnu
+          - platform: ubuntu-22.04-arm64
+            arch: aarch64
+            rust-target: aarch64-unknown-linux-gnu
     runs-on: ${{ matrix.platform }}
 
     steps:
@@ -20,7 +26,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install system dependencies
-        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -36,7 +41,7 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-unknown-linux-gnu
+          targets: ${{ matrix.rust-target }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -75,19 +80,26 @@ jobs:
             ## 玲珑应用商店 v__VERSION__
             
             ### 下载安装
-            请根据您的 Linux 发行版选择对应的安装包：
+            请根据您的 Linux 发行版和 CPU 架构选择对应的安装包：
+            
+            #### x86_64 (AMD64)
+            - **AppImage**: 通用格式，下载后添加可执行权限即可运行
+            - **DEB**: 适用于 Debian/Ubuntu/Deepin 等发行版
+            - **RPM**: 适用于 Fedora/openSUSE/UOS 等发行版
+            
+            #### ARM64 (aarch64)
             - **AppImage**: 通用格式，下载后添加可执行权限即可运行
             - **DEB**: 适用于 Debian/Ubuntu/Deepin 等发行版
             - **RPM**: 适用于 Fedora/openSUSE/UOS 等发行版
             
             ### 系统要求
-            - Linux 操作系统
+            - Linux 操作系统（x86_64 或 ARM64）
             - 已安装玲珑包管理器 (ll-cli)
             - GTK 3.0+
-            - WebKit2GTK 4.0+
+            - WebKit2GTK 4.1+
             
             ### 更新日志
             详见 [CHANGELOG](https://github.com/SXFreell/linglong-store/releases/tag/${{ github.ref_name }})
           releaseDraft: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
-          args: --config src-tauri/tauri.conf.json
+          args: --config src-tauri/tauri.conf.json --target ${{ matrix.rust-target }}
