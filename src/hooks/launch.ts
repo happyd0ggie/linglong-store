@@ -32,7 +32,7 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
 
   // ==================== Store 状态和方法 ====================
   // 全局状态
-  const { onInited, setArch, appVersion, setAppVersion } = useGlobalStore()
+  const { onInited, setArch, setAppVersion } = useGlobalStore()
 
   // 配置状态
   const { showBaseService, checkVersion } = useConfigStore()
@@ -92,19 +92,21 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   /**
    * 步骤4: 检查商店版本更新
    */
-  const checkStoreVersion = useCallback(async() => {
+  const checkStoreVersion = useCallback(async(version: string) => {
     try {
       if (!checkVersion) {
         return
       }
 
+      console.info('检查商店版本更新，当前版本:', version)
+
       // 静默检查更新（不显示提示）
-      await checkForUpdate(appVersion, true)
+      await checkForUpdate(version, false)
     } catch (err) {
       // 版本检查失败不阻断初始化
       console.warn('检查商店版本失败:', err)
     }
-  }, [checkVersion, checkForUpdate, appVersion])
+  }, [checkVersion, checkForUpdate])
 
   /**
    * 执行完整的初始化流程
@@ -116,27 +118,27 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
 
       // 步骤1: 获取应用版本
       setCurrentStep('获取应用版本')
-      await getAppVersion()
+      const version = await getAppVersion()
       setProgress(10)
 
-      // 步骤1: 获取系统信息
+      // 步骤2: 获取系统信息
       setCurrentStep('获取系统信息')
       await initSystemInfo()
       setProgress(20)
 
-      // 步骤2: 加载已安装应用
+      // 步骤3: 加载已安装应用
       setCurrentStep('加载已安装应用')
       await loadInstalledApps()
       setProgress(50)
 
-      // 步骤3: 加载已安装应用详情
+      // 步骤4: 加载已安装应用详情
       setCurrentStep('加载已安装应用详情')
       await loadInstalledAppsDetail()
       setProgress(80)
 
-      // 步骤4: 检查商店版本（可选）
+      // 步骤5: 检查商店版本（可选）
       setCurrentStep('检查商店版本')
-      await checkStoreVersion()
+      await checkStoreVersion(version)
       setProgress(100)
 
       onInited()
@@ -147,8 +149,10 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
       console.error('应用初始化失败:', err)
     }
   }, [
+    getAppVersion,
     initSystemInfo,
     loadInstalledApps,
+    loadInstalledAppsDetail,
     checkStoreVersion,
     onInited,
   ])

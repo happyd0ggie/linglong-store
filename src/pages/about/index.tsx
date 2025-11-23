@@ -1,4 +1,4 @@
-import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, Modal, message } from 'antd'
+import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message } from 'antd'
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
 import update from '@/assets/icons/update.svg'
@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { getLlCliVersion } from '@/apis/invoke'
 import { getSearchAppList, suggest } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
+import { useUpdateStore } from '@/hooks/useUploadStore'
 import TextArea from 'antd/es/input/TextArea'
 
 type FieldType = {
@@ -18,7 +19,6 @@ const feedOptions = ['商店缺陷', '应用更新', '应用故障']
 
 const AboutSoft = () => {
   const [open, setOpen] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
   const [messageApi, contextHolder] = message.useMessage()
   const [form] = Form.useForm()
   const [linglongVersion, setLinglongVersion] = useState<string>('1.7.4')
@@ -26,6 +26,7 @@ const AboutSoft = () => {
   const repoName = useGlobalStore((state) => state.repoName)
   const arch = useGlobalStore((state) => state.arch)
   const appVersion = useGlobalStore((state) => state.appVersion)
+  const { checkForUpdate, checking } = useUpdateStore()
 
   const linglongData = useMemo(() => [
     {
@@ -52,16 +53,12 @@ const AboutSoft = () => {
       value: linglongVersion,
     },
     {
-      label: '开发作者',
-      value: 'Jokul<986432015@qq.com>',
-    },
-    {
       label: '码云地址',
-      value: 'https://gitee.com/jokul2018/linglong_store',
+      value: 'https://gitee.com/Shirosu/linglong-store',
     },
     {
       label: 'GitHub地址',
-      value: 'https://github.com/GershonWang/linglong-store',
+      value: 'https://github.com/SXFreell/linglong-store',
     },
   ], [linglongVersion])
 
@@ -72,13 +69,10 @@ const AboutSoft = () => {
   }), [])
 
   const checkVersionClick = () => {
-    console.log('检查版本更新逻辑')
-    const num = Math.random()
-    if (num > 0.5) {
-      setModalOpen(true)
+    if (checking) {
       return
     }
-    messageApi.success('当前已是最新版本', 1)
+    checkForUpdate(appVersion, false)
   }
 
   const feedbackClick = () => {
@@ -90,7 +84,7 @@ const AboutSoft = () => {
   }
 
   const onClickSubmitForm: FormProps<FieldType>['onFinish'] = async(values) => {
-    console.log('提交反馈数据: ', values)
+    console.info('提交反馈数据: ', values)
     try {
       const msg = `分类: ${values.classification?.join(', ') || '无'}\n概述: ${values.overview || '无'}\n描述: ${values.description || '无'}`
       const res = await suggest({
@@ -210,21 +204,6 @@ const AboutSoft = () => {
           </Form.Item>
         </Form>
       </Drawer>
-      <Modal
-        title="版本更新"
-        centered
-        closable={false}
-        okText="确认"
-        cancelText="取消"
-        width={300}
-        open={modalOpen}
-        onOk={() => setModalOpen(false)}
-        onCancel={() => setModalOpen(false)}
-      >
-        <p>当前版本: 1.2.3</p>
-        <p>最新版本: 1.2.5</p>
-        <p>是否更新到最新版?</p>
-      </Modal>
     </div>
   )
 }

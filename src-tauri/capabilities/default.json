@@ -11,6 +11,7 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "opener:allow-open-url",
     "core:window:default",
     "core:window:allow-start-dragging",
     "core:window:allow-minimize",

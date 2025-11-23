@@ -3,8 +3,8 @@
  * 用于检查商店客户端自身的版本更新
  */
 
-import { useState, useCallback } from 'react'
-import { message } from 'antd'
+import React, { useState, useCallback } from 'react'
+import { message, Modal } from 'antd'
 import { createAlova } from 'alova'
 import adapterFetch from 'alova/fetch'
 
@@ -16,6 +16,19 @@ const giteeAlova = createAlova({
   baseURL: 'https://gitee.com/api/v5',
   requestAdapter: adapterFetch(),
   timeout: 10000,
+  // 响应拦截器：自动解析 JSON
+  responded: {
+    onSuccess: async(response: Response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      return response.json()
+    },
+    onError: (error: Error) => {
+      console.error('Gitee API 请求失败:', error)
+      throw error
+    },
+  },
 })
 
 /**
@@ -179,7 +192,7 @@ export async function fetchLatestUpdate(
 
     const releases = await method.send()
 
-    if (!releases || releases.length === 0) {
+    if (!releases || !Array.isArray(releases) || releases.length === 0) {
       console.error('未找到任何 Release')
       return null
     }
@@ -293,7 +306,94 @@ export function useUpdateStore() {
         })
 
         if (!silent) {
-          message.success(`发现新版本：${updateInfo.version}`)
+          // 弹窗提示更新，提供下载链接
+          const releaseUrl = `https://gitee.com/${GITEE_REPO}/releases`
+
+          console.info('发现更新:', {
+            currentVersion: currentVersion,
+            latestVersion: updateInfo.version,
+            changelog: updateInfo.changelog,
+            releaseUrl,
+          })
+
+          // 使用 Modal 弹窗显示更新信息
+          const contentElements = [
+            React.createElement('p', { key: 'current' }, `当前版本: v${currentVersion}`),
+            React.createElement('p', { key: 'latest' }, `最新版本: v${updateInfo.version}`),
+          ]
+
+          if (updateInfo.changelog) {
+            contentElements.push(
+              React.createElement(
+                'div',
+                { key: 'changelog', style: { marginTop: '16px' } },
+                React.createElement('p', { style: { fontWeight: 'bold', marginBottom: '8px' } }, '更新内容:'),
+                React.createElement(
+                  'div',
+                  {
+                    style: {
+                      maxHeight: '300px',
+                      overflow: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      padding: '8px',
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '4px',
+                    },
+                  },
+                  updateInfo.changelog,
+                ),
+              ),
+            )
+          }
+
+          // 添加下载链接显示
+          contentElements.push(
+            React.createElement(
+              'div',
+              { key: 'download-link', style: { marginTop: '16px' } },
+              React.createElement('p', { style: { fontWeight: 'bold', marginBottom: '8px' } }, '下载地址:'),
+              React.createElement(
+                'div',
+                {
+                  style: {
+                    padding: '8px',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '4px',
+                    wordBreak: 'break-all',
+                    userSelect: 'all',
+                    fontSize: '13px',
+                  },
+                },
+                releaseUrl,
+              ),
+            ),
+          )
+
+          Modal.confirm({
+            title: '发现新版本',
+            content: React.createElement('div', null, ...contentElements),
+            okText: '复制下载链接',
+            okType: 'primary',
+            cancelText: '稍后再说',
+            width: 600,
+            onOk: () => {
+              try {
+                // 复制链接到剪贴板
+                navigator.clipboard
+                  .writeText(releaseUrl)
+                  .then(() => {
+                    message.success('下载链接已复制到剪贴板')
+                  })
+                  .catch((err) => {
+                    console.error('复制失败:', err)
+                    message.error('复制失败，请手动复制链接')
+                  })
+              } catch (err) {
+                console.error('复制失败:', err)
+                message.error('复制失败，请手动复制链接')
+              }
+            },
+          })
         }
       } else {
         // 已是最新版本
