@@ -1,11 +1,15 @@
 [package]
-name = "玲珑商店客户端"
-version = "2.0.0"
-description = "玲珑商店客户端"
+name = "linglong-store"
+version = "2.0.0-beta.1"
+description = "玲珑应用商店"
 authors = ["Shirosu<xfreell@163.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[app]
+title = "玲珑应用商店"
+identifier = "com.dongpl.linglong-store.v2"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
