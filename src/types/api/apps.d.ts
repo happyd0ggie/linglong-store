@@ -300,6 +300,11 @@ declare namespace API {
         type GetAppDetailsRes = AppMainDto[]
 
         /**
+         * 获取应用详情 - 响应参数
+         */
+        type GetAppDetailsRes = Record<string, AppMainDto[]>;
+
+        /**
          * 获取轮播图列表 - 响应参数
          */
         type GetWelcomeCarouselListRes = AppMainDto[]
