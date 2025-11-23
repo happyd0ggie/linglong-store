@@ -7,6 +7,7 @@ import DefaultIcon from '@/assets/linyaps.svg'
 import { uninstallApp, runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useUpdatesStore } from '@/stores/updates'
+import { useDownloadConfigStore } from '@/stores/appConfig'
 import { useAppInstall } from '@/hooks/useAppInstall'
 import { compareVersions } from '@/util/checkVersion'
 
@@ -35,6 +36,7 @@ const ApplicationCard = ({
 
   const { installedApps, removeApp } = useInstalledAppsStore()
   const updates = useUpdatesStore(state => state.updates)
+  const downloadList = useDownloadConfigStore(state => state.downloadList)
 
   useEffect(() => {
     if (appInfo && appInfo.appId && !appInfo.appId.startsWith('empty-')) {
@@ -79,6 +81,27 @@ const ApplicationCard = ({
   const currentOperate = useMemo(() => {
     return OPERATE_LIST[resolvedOperateId] || OPERATE_LIST[OperateType.INSTALL]
   }, [resolvedOperateId])
+
+  // 监听全局下载列表，保持按钮 loading 与实际安装/更新进度同步
+  useEffect(() => {
+    if (!appInfo?.appId) {
+      return
+    }
+    const target = downloadList.find(app => app.appId === appInfo.appId)
+
+    if (!target) {
+      if (resolvedOperateId === OperateType.INSTALL || resolvedOperateId === OperateType.UPDATE) {
+        setButtonLoading(false)
+      }
+      return
+    }
+
+    if (target.flag === 'downloading') {
+      setButtonLoading(true)
+    } else {
+      setButtonLoading(false)
+    }
+  }, [appInfo?.appId, downloadList, resolvedOperateId])
 
   // 获取图标 URL
   const iconUrl = useMemo(() => {

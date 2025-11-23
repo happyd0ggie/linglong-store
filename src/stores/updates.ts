@@ -23,6 +23,7 @@ interface UpdatesStore {
   checkUpdates: (force?: boolean) => Promise<void>
   startAutoRefresh: () => void
   stopAutoRefresh: () => void
+  removeUpdate: (appId: string) => void
 }
 
 let timer: NodeJS.Timeout | null = null
@@ -160,5 +161,13 @@ export const useUpdatesStore = create<UpdatesStore>((set, get) => ({
       clearInterval(timer)
       timer = null
     }
+  },
+
+  removeUpdate: (appId: string) => {
+    set(state => {
+      const next = state.updates.filter(item => item.appId !== appId)
+      useGlobalStore.getState().getUpdateAppNum(next.length)
+      return { updates: next }
+    })
   },
 }))
