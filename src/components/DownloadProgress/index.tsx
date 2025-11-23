@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import DefaultIcon from '@/assets/linyaps.svg?url'
 import { Progress, Empty, message } from 'antd'
 import { useDownloadConfigStore } from '@/stores/appConfig'
-import { cancelInstallApp, runApp } from '@/apis/invoke'
+import { cancelInstallApp } from '@/apis/invoke'
 
 const DownloadIcon = ({ appId, percentage = 0, isDownloading = false }: {
   appId: string
@@ -87,21 +87,6 @@ const DownloadProgress = () => {
     clearDownloadList()
     messageApi.success(`已清除 ${completedItems.length} 条下载记录`)
   }
-
-  const handleOpenApp = async(appId?: string) => {
-    if (!appId) {
-      messageApi.error('无法启动：缺少应用ID')
-      return
-    }
-
-    try {
-      await runApp(appId)
-      messageApi.success('应用启动成功')
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      messageApi.error(`启动失败: ${errorMessage}`)
-    }
-  }
   return <>
     <div className={styles.downloadContainer}>
       <div className={styles.downloadBox} >
@@ -131,12 +116,7 @@ const DownloadProgress = () => {
                   />
                   : (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        className={styles.downloadBtn}
-                        onClick={() => handleOpenApp(item.appId)}
-                      >
-                        打开
-                      </button>
+                      <button className={styles.downloadBtn}>打开</button>
                       <button
                         className={styles.closeBtn}
                         onClick={() => removeDownloadingApp(item.appId || '')}
