@@ -1,4 +1,4 @@
-import { Star, Info, SettingTwo, Hourglass, ApplicationOne, UpdateRotation, ApplicationTwo } from '@icon-park/react'
+import { Star, SettingTwo, Hourglass, ApplicationOne, UpdateRotation, ApplicationTwo } from '@icon-park/react'
 
 export default [
   {
@@ -50,11 +50,11 @@ export default [
     activeIcon: <SettingTwo theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
     index: 7,
   },
-  {
-    menuName: '关于程序',
-    menuPath: '/about',
-    icon: <Info theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <Info theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
-    index: 8,
-  },
+  // {
+  //   menuName: '关于程序',
+  //   menuPath: '/about',
+  //   icon: <Info theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
+  //   activeIcon: <Info theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
+  //   index: 8,
+  // },
 ]

@@ -3,15 +3,13 @@
  * 包含应用初始化状态和搜索功能的状态管理
  */
 import { create } from 'zustand'
-// read app version from package.json so it's globally available
-import pkg from '../../package.json'
 
 export const useGlobalStore = create<Store.Global>((set) => ({
   isInited: false,
   arch: '',
   repoName: 'stable',
   // use package.json version as global appVersion
-  appVersion: pkg?.version || 'unknown',
+  appVersion: '',
   updateAppNum: 0,
   onInited: () => set(() => ({ isInited: true })),
   setArch: (value: string) => set(() => ({

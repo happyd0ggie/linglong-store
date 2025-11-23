@@ -16,9 +16,9 @@ const BasicSetting = ()=>{
   const showBaseServiceClick = ()=>{
     changeBaseServiceStatus(!showBaseService)
   }
-  const clearAbandonServiceClick = () => {
-    console.info('清除废弃基础服务')
-  }
+  // const clearAbandonServiceClick = () => {
+  //   console.info('清除废弃基础服务')
+  // }
   const handleCloseOrHide = (e:boolean)=>{
     console.log(e, 'isHide')
     setIsHide(e)
@@ -44,7 +44,7 @@ const BasicSetting = ()=>{
           <div className={styles.content_item}>
             <Switch checked={showBaseService} onChange={showBaseServiceClick}/><span className={styles.item_label}>显示基础运行服务</span>
           </div>
-          <p className={styles.clean_basic} onClick={clearAbandonServiceClick}>清除废弃基础服务</p>
+          {/* <p className={styles.clean_basic} onClick={clearAbandonServiceClick}>清除废弃基础服务</p> */}
         </div>
       </div>
     </div>

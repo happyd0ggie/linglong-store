@@ -12,6 +12,8 @@ import { arch } from '@tauri-apps/plugin-os'
 import { useGlobalStore } from '@/stores/global'
 import { useConfigStore } from '@/stores/appConfig'
 import { useInstalledAppsStore } from '@/stores/installedApps'
+import { useUpdateStore } from './useUploadStore'
+import { app } from '@tauri-apps/api'
 
 /**
  * 应用启动初始化 Hook
@@ -30,7 +32,7 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
 
   // ==================== Store 状态和方法 ====================
   // 全局状态
-  const { onInited, setArch } = useGlobalStore()
+  const { onInited, setArch, appVersion, setAppVersion } = useGlobalStore()
 
   // 配置状态
   const { showBaseService, checkVersion } = useConfigStore()
@@ -38,7 +40,20 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   // 已安装应用状态
   const { fetchInstalledApps, updateAppDetails } = useInstalledAppsStore()
 
+  // 更新检测状态
+  const { checking: checkingUpdate, hasUpdate, updateInfo, checkForUpdate } = useUpdateStore()
+
   // ==================== 初始化步骤 ====================
+
+  const getAppVersion = useCallback(async() => {
+    try {
+      const version = await app.getVersion()
+      setAppVersion(version)
+      return version
+    } catch (err) {
+      throw new Error(`获取应用版本失败: ${err}`)
+    }
+  }, [])
 
   /**
    * 步骤1: 获取系统架构信息
@@ -47,7 +62,6 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
     try {
       const currentArch = arch()
       setArch(currentArch)
-      setProgress(20)
     } catch (err) {
       throw new Error(`获取系统架构失败: ${err}`)
     }
@@ -59,7 +73,6 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   const loadInstalledApps = useCallback(async() => {
     try {
       await fetchInstalledApps(showBaseService)
-      setProgress(50)
     } catch (err) {
       throw new Error(`加载已安装应用失败: ${err}`)
     }
@@ -71,7 +84,6 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   const loadInstalledAppsDetail = useCallback(async() => {
     try {
       await updateAppDetails()
-      setProgress(80)
     } catch (err) {
       throw new Error(`获取已安装应用信息: ${err}`)
     }
@@ -83,23 +95,16 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   const checkStoreVersion = useCallback(async() => {
     try {
       if (!checkVersion) {
-        setProgress(90)
         return
       }
 
-      // TODO: 实现商店版本检查逻辑
-      // 1. 获取当前商店版本
-      // 2. 请求服务器最新版本
-      // 3. 对比版本号
-      // 4. 显示更新提示（如果需要）
-
-      setProgress(90)
+      // 静默检查更新（不显示提示）
+      await checkForUpdate(appVersion, true)
     } catch (err) {
-      // 版本检查失败不阻止初始化
+      // 版本检查失败不阻断初始化
       console.warn('检查商店版本失败:', err)
-      setProgress(90)
     }
-  }, [checkVersion])
+  }, [checkVersion, checkForUpdate, appVersion])
 
   /**
    * 执行完整的初始化流程
@@ -109,24 +114,31 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
       setError(null)
       setProgress(0)
 
+      // 步骤1: 获取应用版本
+      setCurrentStep('获取应用版本')
+      await getAppVersion()
+      setProgress(10)
+
       // 步骤1: 获取系统信息
       setCurrentStep('获取系统信息')
       await initSystemInfo()
+      setProgress(20)
 
       // 步骤2: 加载已安装应用
       setCurrentStep('加载已安装应用')
       await loadInstalledApps()
+      setProgress(50)
 
       // 步骤3: 加载已安装应用详情
       setCurrentStep('加载已安装应用详情')
       await loadInstalledAppsDetail()
+      setProgress(80)
 
       // 步骤4: 检查商店版本（可选）
       setCurrentStep('检查商店版本')
       await checkStoreVersion()
-
-      // 完成初始化
       setProgress(100)
+
       onInited()
       setIsInit(true)
     } catch (err) {
@@ -167,5 +179,9 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
     currentStep,
     error,
     retry,
+    // 更新检测相关
+    checkingUpdate,
+    hasUpdate,
+    updateInfo,
   }
 }
