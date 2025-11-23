@@ -88,7 +88,7 @@ const UpdateApp = () => {
               ))}
             </div>
 
-            <div className={styles.floatingBtnContainer}>
+            <div className={styles.floatingBtnContainer} >
               <Button
                 type="primary"
                 size="large"
