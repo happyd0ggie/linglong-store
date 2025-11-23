@@ -72,12 +72,9 @@ export const useDownloadConfigStore = create<Store.DownloadConfig>((set) => ({
   })),
   // 更新APP安装进度
   updateAppProgress: (appId: string, percentage: number, status: string) => set((state) => {
-    console.log(`[updateAppProgress] appId: ${appId}, percentage: ${percentage}, status: ${status}`)
-
     return {
       downloadList: state.downloadList.map((app: Store.DownloadApp) => {
         if (app.appId === appId) {
-          console.log(`[updateAppProgress] Updating app ${appId}: percentage=${percentage}`)
           return {
             ...app,
             percentage,
@@ -121,7 +118,6 @@ export const tauriDownloadConfigHandler = createTauriStore('downloadConfigStore'
 
 // 手动启动并过滤掉 downloading 状态的残留数据
 tauriDownloadConfigHandler.start().then(() => {
-  console.log('[tauriDownloadConfigHandler] Loaded from disk')
   const state = useDownloadConfigStore.getState()
   const originalCount = state.downloadList.length
 
@@ -129,7 +125,6 @@ tauriDownloadConfigHandler.start().then(() => {
   const filteredList = state.downloadList.filter((app: Store.DownloadApp) => app.flag !== 'downloading')
 
   if (filteredList.length < originalCount) {
-    console.log('[tauriDownloadConfigHandler] Filtered out', originalCount - filteredList.length, 'downloading items on startup')
     useDownloadConfigStore.setState({ downloadList: filteredList })
   }
 })

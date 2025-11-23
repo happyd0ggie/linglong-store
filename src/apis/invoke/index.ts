@@ -87,10 +87,8 @@ export const installApp = async(
  * @returns Promise<string> 取消操作的结果
  */
 export const cancelInstallApp = async(appId: string): Promise<string> => {
-  console.log('[cancelInstallApp] API called with appId:', appId)
   try {
     const result = await invoke('cancel_install', { appId })
-    console.log('[cancelInstallApp] API result:', result)
     return result as string
   } catch (error) {
     console.error('[cancelInstallApp] API error:', error)
@@ -120,7 +118,6 @@ export const onInstallProgress = async(
   return await listen<API.INVOKE.InstallProgress>(
     'install-progress',
     (event) => {
-      console.log('[onInstallProgress] Received event:', event.payload)
       callback(event.payload)
     },
   )
@@ -148,7 +145,6 @@ export const onInstallCancelled = async(
   return await listen<{ appId: string; cancelled: boolean; message: string }>(
     'install-cancelled',
     (event) => {
-      console.log('[onInstallCancelled] Received event:', event.payload)
       callback(event.payload)
     },
   )

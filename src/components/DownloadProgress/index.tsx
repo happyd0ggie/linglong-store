@@ -15,13 +15,10 @@ const DownloadIcon = ({ appId, percentage = 0, isDownloading = false }: {
   } = useDownloadConfigStore()
 
   const handleCancel = async() => {
-    console.log('[handleCancel] Clicked! appId:', appId, 'isDownloading:', isDownloading)
-
     if (isDownloading) {
       try {
-        console.log('[handleCancel] Calling cancelInstallApp for:', appId)
         const result = await cancelInstallApp(appId)
-        console.log('[handleCancel] Cancel result:', result)
+        console.info('[handleCancel] Cancel result:', result)
         message.success('已取消安装')
         removeDownloadingApp(appId)
         console.info('[handleCancel] Successfully cancelled:', appId)
@@ -31,7 +28,6 @@ const DownloadIcon = ({ appId, percentage = 0, isDownloading = false }: {
         // 检查是否是"找不到进程"的错误
         const errorMessage = error instanceof Error ? error.message : String(error)
         if (errorMessage.includes('No installation process found')) {
-          console.log('[handleCancel] Process not found, removing from list (likely residual data)')
           removeDownloadingApp(appId)
         } else {
           message.error(`取消安装失败: ${errorMessage}`)
@@ -43,9 +39,6 @@ const DownloadIcon = ({ appId, percentage = 0, isDownloading = false }: {
       console.info('[handleCancel] Removed completed task:', appId)
     }
   }
-
-  // 调试日志
-  console.log(`[DownloadIcon] appId: ${appId}, percentage: ${percentage}, type: ${typeof percentage}`)
 
   return (
     <div className={styles.downloadIcon}>

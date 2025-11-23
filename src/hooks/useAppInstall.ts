@@ -50,8 +50,6 @@ export const useAppInstall = () => {
   const { addAppToDownloadList } = useDownloadConfigStore()
 
   const handleInstall = useCallback(async(app: AppInfo) => {
-    console.log('[useAppInstall] ✅ Function called with app:', app)
-
     if (!app?.appId) {
       console.error('[useAppInstall] ❌ App ID is missing!')
       message.error('应用信息不完整')
@@ -60,8 +58,6 @@ export const useAppInstall = () => {
 
     setInstallingAppId(app.appId)
     try {
-      console.log('[useAppInstall] 🚀 开始安装:', app.appId)
-
       const executeInstall = async(force = false, skipDownloadInit = false) => {
         if (!skipDownloadInit) {
           addAppToDownloadList({

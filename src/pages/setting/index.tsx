@@ -20,7 +20,6 @@ const BasicSetting = ()=>{
   //   console.info('清除废弃基础服务')
   // }
   const handleCloseOrHide = (e:boolean)=>{
-    console.log(e, 'isHide')
     setIsHide(e)
     const newValue = e ? 'hide' : 'close'
     changeCloseOrHide(newValue)

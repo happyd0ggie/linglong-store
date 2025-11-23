@@ -19,11 +19,7 @@ const Process = () => {
 
   const fetchRunningApps = async() => {
     try {
-      // eslint-disable-next-line no-console
-      console.log('[fetchRunningApps] Fetching running apps...')
       const apps = await getRunningLinglongApps() as LinglongAppInfo[]
-      // eslint-disable-next-line no-console
-      console.log('[fetchRunningApps] Got apps:', apps.length)
       const formattedApps = apps.map((app, index) => ({
         ...app,
         key: (index + 1).toString(),
@@ -51,15 +47,9 @@ const Process = () => {
   }, [])
 
   const processClick = async(record: LinglongAppInfo) => {
-    // eslint-disable-next-line no-console
-    console.log('[processClick] Starting to kill app:', record.name)
     try {
       setLoading(record.name)
-      // eslint-disable-next-line no-console
-      console.log('[processClick] Calling killLinglongApp for:', record.name)
       await killLinglongApp(record.name)
-      // eslint-disable-next-line no-console
-      console.log('[processClick] Successfully killed app:', record.name)
       // message.success(`成功停止 ${record.name}`)
       // 刷新列表
       await fetchRunningApps()
