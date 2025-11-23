@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
-use std::io::{Read, Write};
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Instant;
 use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize, Child};
 use once_cell::sync::Lazy;
@@ -235,25 +235,38 @@ pub async fn run_linglong_app(app_id: String) -> Result<String, String> {
     println!("[run_linglong_app] Starting app: {}", app_id);
     println!("[run_linglong_app] Command: ll-cli run {}", app_id);
 
-    // 使用 spawn 而不是 output，因为 GUI 应用应该在后台运行
-    // 不需要等待应用退出
-    let child = Command::new("ll-cli")
-        .arg("run")
-        .arg(&app_id)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| {
-            let error = format!("Failed to execute 'll-cli run': {}", e);
-            println!("[run_linglong_app] Error: {}", error);
-            error
-        })?;
+    // 在后台线程中启动命令，不等待退出
+    let app_id_bg = app_id.clone();
+    std::thread::spawn(move || {
+        println!(
+            "[run_linglong_app][bg] Spawning ll-cli run {}",
+            app_id_bg
+        );
+        match Command::new("ll-cli")
+            .arg("run")
+            .arg(&app_id_bg)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+        {
+            Ok(child) => {
+                println!(
+                    "[run_linglong_app][bg] Process spawned with PID: {:?}",
+                    child.id()
+                );
+                // 不 wait，线程结束后让子进程自行运行
+            }
+            Err(e) => {
+                println!(
+                    "[run_linglong_app][bg] Failed to execute 'll-cli run' for {}: {}",
+                    app_id_bg, e
+                );
+            }
+        }
+    });
 
-    println!("[run_linglong_app] Process spawned with PID: {:?}", child.id());
-    println!("[run_linglong_app] Successfully launched {}", app_id);
-
-    // 不等待进程结束，立即返回成功
+    // 立即返回，不等待后台线程/子进程结束
     Ok(format!("Successfully launched {}", app_id))
 }
 /// 安装进度事件数据结构
