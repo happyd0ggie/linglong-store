@@ -12,79 +12,124 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-22.04]
+        include:
+          - platform: ubuntu-22.04
+            arch: amd64
+            docker-platform: linux/amd64
+          - platform: ubuntu-22.04
+            arch: arm64
+            docker-platform: linux/arm64
     runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build in Docker
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf
+          docker run --rm \
+            --platform ${{ matrix.docker-platform }} \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            -e NODE_ENV=pro \
+            node:20-bookworm \
+            bash -c "
+              # 安装系统依赖
+              apt-get update && \
+              apt-get install -y \
+                curl \
+                wget \
+                file \
+                libgtk-3-dev \
+                libwebkit2gtk-4.1-dev \
+                libjavascriptcoregtk-4.1-dev \
+                libsoup-3.0-dev \
+                libayatana-appindicator3-dev \
+                librsvg2-dev \
+                patchelf \
+                pkg-config \
+                build-essential \
+                xdg-utils && \
+              
+              # 安装 Rust
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+              . \$HOME/.cargo/env && \
+              
+              # 安装 pnpm
+              corepack enable && \
+              corepack prepare pnpm@9 --activate && \
+              
+              # 安装前端依赖
+              pnpm install --frozen-lockfile && \
+              
+              # 构建
+              pnpm build:pro
+            "
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          targets: x86_64-unknown-linux-gnu
+          name: linglong-store-${{ matrix.arch }}
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+  create-release:
+    needs: release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          workspaces: './src-tauri -> target'
+          path: artifacts
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-          cache: 'pnpm'
-
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run linter
-        run: pnpm lint
-
-      - name: Type check
-        run: pnpm exec tsc --noEmit
-
-      - name: Build and release
-        uses: tauri-apps/tauri-action@v0
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_ENV: pro
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: '玲珑应用商店 v__VERSION__'
-          releaseBody: |
-            ## 玲珑应用商店 v__VERSION__
+          tag_name: ${{ github.ref_name }}
+          name: '玲珑应用商店 v${{ github.ref_name }}'
+          body: |
+            ## 玲珑应用商店 ${{ github.ref_name }}
             
             ### 下载安装
-            请根据您的 Linux 发行版选择对应的安装包：
-            - **AppImage**: 通用格式，下载后添加可执行权限即可运行
-            - **DEB**: 适用于 Debian/Ubuntu/Deepin 等发行版
-            - **RPM**: 适用于 Fedora/openSUSE/UOS 等发行版
+            请根据您的 Linux 发行版和 CPU 架构选择对应的安装包：
+            
+            #### x86_64 (AMD64)
+            - 🔹 `*-amd64.AppImage` - 通用格式，下载后添加可执行权限即可运行
+            - 🔹 `*_amd64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
+            - 🔹 `*-amd64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+            
+            #### ARM64 (aarch64)
+            - 🔹 `*-arm64.AppImage` - 通用格式，下载后添加可执行权限即可运行
+            - 🔹 `*_arm64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
+            - 🔹 `*-arm64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
             
             ### 系统要求
-            - Linux 操作系统
+            - Linux 操作系统（支持 x86_64 和 ARM64）
             - 已安装玲珑包管理器 (ll-cli)
             - GTK 3.0+
-            - WebKit2GTK 4.0+
+            - WebKit2GTK 4.1+
             
             ### 更新日志
             详见 [CHANGELOG](https://github.com/SXFreell/linglong-store/releases/tag/${{ github.ref_name }})
-          releaseDraft: true
+          draft: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
-          args: --config src-tauri/tauri.conf.json
+          files: |
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
