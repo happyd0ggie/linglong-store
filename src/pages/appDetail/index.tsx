@@ -211,7 +211,7 @@ const AppDetail = () => {
     console.info('appAllInfo: getting app detail for', currentApp.appId)
     try {
       const result = await getAppDetail([{ appId: currentApp.appId, arch }])
-      const appDetailList = (result.data[currentApp.appId]as API.APP.AppMainDto[]) || []
+      const appDetailList = (result.data[currentApp.appId as keyof typeof result.data] as API.APP.AppMainDto[]) || []
       if (appDetailList.length > 0) {
         setScreenshotList(appDetailList[0].appScreenshotList || [])
       } else {

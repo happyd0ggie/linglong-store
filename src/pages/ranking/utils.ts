@@ -1,4 +1,4 @@
-import type { AppInfo } from '@/apis/apps/types'
+type AppInfo = API.APP.AppMainDto
 
 /**
  * 生成空数据应用卡片
