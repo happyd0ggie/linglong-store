@@ -48,6 +48,23 @@ echo "==> （可选）安装无障碍 AT-SPI 总线，消除 AT-SPI 警告..."
 sudo apt-get install -y \
   at-spi2-core
 
+echo "==> 安装编译相关库..."
+sudo apt-get install -y \
+  build-essential \
+  curl wget file \
+  pkg-config \
+  libssl-dev \
+  libgtk-3-dev \
+  libwebkit2gtk-4.1-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev \
+  xdg-utils \
+  patchelf \
+  desktop-file-utils \
+  libglib2.0-bin \
+  squashfs-tools
+
+
 echo "==> 所有依赖安装完成！"
 echo "现在可以回到项目目录重新运行，例如："
 echo "  cd ~/linglong-store/rust-linglong-store"
