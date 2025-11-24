@@ -251,7 +251,7 @@ const AppDetail = () => {
           const remainingVersions = await refreshInstalledVersions()
           if (remainingVersions.size === 0) {
             removeApp(currentApp.appId, version)
-            navigate('/my-apps')
+            navigate('/my_apps')
           }
         } catch (error) {
           console.error('[handleUninstall] Error uninstalling:', currentApp.appId, version, error)
@@ -692,4 +692,3 @@ const AppDetail = () => {
 }
 
 export default AppDetail
-
