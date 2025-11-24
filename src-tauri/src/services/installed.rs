@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize, Child};
 use once_cell::sync::Lazy;
+use crate::services::process::kill_linglong_app;
 
 // 全局进程管理器，存储正在进行的安装进程
 // 使用 Arc<Mutex<Box<dyn Child + Send + Sync>>> 来共享进程所有权
@@ -121,6 +122,18 @@ pub async fn get_installed_apps(include_base_service: bool) -> Result<Vec<Instal
 }
 /// 卸载指定的玲珑应用
 pub async fn uninstall_linglong_app(app_id: String, version: String) -> Result<String, String> {
+    println!(
+        "[uninstall_linglong_app] Attempting to stop app before uninstall: {}",
+        app_id
+    );
+    match kill_linglong_app(app_id.clone()).await {
+        Ok(msg) => println!("[uninstall_linglong_app] kill result: {}", msg),
+        Err(err) => println!(
+            "[uninstall_linglong_app] kill warning for {}: {} (will continue uninstall)",
+            app_id, err
+        ),
+    }
+
     let app_ref = format!("{}/{}", app_id, version);
 
     let output = Command::new("ll-cli")
