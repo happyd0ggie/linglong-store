@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
+use crate::services::ll_cli_command;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LinglongAppInfo {
@@ -22,7 +23,7 @@ struct AppInfoJson {
 }
 
 pub async fn get_running_linglong_apps() -> Result<Vec<LinglongAppInfo>, String> {
-    let ps_output = Command::new("ll-cli")
+    let ps_output = ll_cli_command()
         .arg("ps")
         .output()
         .map_err(|e| format!("Failed to execute 'll-cli ps': {}", e))?;
@@ -45,7 +46,7 @@ pub async fn get_running_linglong_apps() -> Result<Vec<LinglongAppInfo>, String>
             let container_id = parts[1];
             let pid = parts[2];
 
-            let info_output = Command::new("ll-cli")
+            let info_output = ll_cli_command()
                 .arg("info")
                 .arg(app_name)
                 .output()
@@ -73,7 +74,7 @@ pub async fn get_running_linglong_apps() -> Result<Vec<LinglongAppInfo>, String>
 }
 
 pub async fn kill_linglong_app(app_name: String) -> Result<String, String> {
-    let output = Command::new("ll-cli")
+    let output = ll_cli_command()
         .arg("kill")
         .arg(&app_name)
         .output()

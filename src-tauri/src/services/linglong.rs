@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::collections::HashMap;
+use crate::services::ll_cli_command;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -16,7 +17,7 @@ pub struct SearchResultItem {
 }
 
 pub async fn search_remote_app(app_id: String) -> Result<Vec<SearchResultItem>, String> {
-    let output = Command::new("ll-cli")
+    let output = ll_cli_command()
         .arg("search")
         .arg(&app_id)
         .arg("--json")
@@ -55,7 +56,7 @@ pub async fn search_remote_app(app_id: String) -> Result<Vec<SearchResultItem>, 
 
 pub async fn get_ll_cli_version() -> Result<String, String> {
     // Run `ll-cli --version` and return the trimmed string
-    let output = Command::new("ll-cli")
+    let output = ll_cli_command()
         .arg("--version")
         .output()
         .map_err(|e| format!("Failed to execute 'll-cli --version': {}", e))?;

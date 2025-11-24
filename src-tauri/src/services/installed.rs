@@ -6,10 +6,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
-use portable_pty::{native_pty_system, CommandBuilder, PtySize, Child};
+use portable_pty::{native_pty_system, PtySize, Child};
 use once_cell::sync::Lazy;
 use tokio::time::sleep;
 use crate::services::process::{kill_linglong_app, get_running_linglong_apps};
+use crate::services::{ll_cli_command, ll_cli_pty_command};
 
 // 全局进程管理器，存储正在进行的安装进程
 // 使用 Arc<Mutex<Box<dyn Child + Send + Sync>>> 来共享进程所有权
@@ -49,7 +50,7 @@ struct LLCliListItem {
 /// 获取已安装的玲珑应用列表
 /// include_base_service: 是否包含基础服务
 pub async fn get_installed_apps(include_base_service: bool) -> Result<Vec<InstalledApp>, String> {
-    let mut cmd = Command::new("ll-cli");
+    let mut cmd = ll_cli_command();
     cmd.arg("list").arg("--json");
 
     if include_base_service {
@@ -159,7 +160,7 @@ pub async fn uninstall_linglong_app(app_id: String, version: String) -> Result<S
 
     let app_ref = format!("{}/{}", app_id, version);
 
-    let output = Command::new("ll-cli")
+    let output = ll_cli_command()
         .arg("uninstall")
         .arg(&app_ref)
         .output()
@@ -175,7 +176,7 @@ pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, St
     println!("[search_app_versions] Searching for installed versions of app_id: {}", app_id);
 
     // 使用 ll-cli list 获取所有已安装的应用，而不是
-    let output = Command::new("ll-cli")
+    let output = ll_cli_command()
         .arg("list")
         .arg("--json")
         .arg("--type=all")
@@ -278,13 +279,15 @@ pub async fn run_linglong_app(app_id: String) -> Result<String, String> {
             "[run_linglong_app][bg] Spawning ll-cli run {}",
             app_id_bg
         );
-        match Command::new("ll-cli")
+        let mut cmd = ll_cli_command();
+        let spawn_result = cmd
             .arg("run")
             .arg(&app_id_bg)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
-            .spawn()
+            .spawn();
+        match spawn_result
         {
             Ok(child) => {
                 println!(
@@ -357,7 +360,7 @@ pub async fn install_linglong_app(
         })?;
 
     // 构建命令
-    let mut cmd = CommandBuilder::new("ll-cli");
+    let mut cmd = ll_cli_pty_command();
     cmd.arg("install");
     cmd.arg(&app_ref);
     cmd.arg("-y"); // 自动回答是
