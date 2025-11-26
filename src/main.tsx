@@ -8,6 +8,13 @@ import { tauriAppConfigHandler } from './stores/appConfig'
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
 
+// 在生产环境禁用右键菜单
+if (import.meta.env.PRO) {
+  document.addEventListener('contextmenu', (e) => {
+    e.preventDefault()
+  })
+}
+
 // 初始化应用配置并渲染
 async function initializeApp() {
   await tauriAppConfigHandler.start()
