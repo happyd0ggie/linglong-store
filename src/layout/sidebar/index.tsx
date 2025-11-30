@@ -1,14 +1,13 @@
 import styles from './index.module.scss'
 import { useNavigate, useLocation } from 'react-router-dom'
-
 import menuList from './components/menuList'
 import SpeedTool from './components/speedTool'
-import { Popover } from '@arco-design/web-react'
+import { Popover } from 'antd'
 import { Speed } from '@icon-park/react'
-import { useInitStore, useSearchStore } from '@/stores/appConfig'
-const Sidebar = ({ className }: { className: string }) => {
+import { useSearchStore } from '@/stores/global'
 
-  const updateAppSum = useInitStore((state) => state.updateAppSum)
+const Sidebar = ({ className }: { className: string }) => {
+  // const updateAppSum = useInitStore((state) => state.updateAppNum)
   const resetKeyword = useSearchStore((state) => state.resetKeyword)
   const navigate = useNavigate()
   const location = useLocation()
@@ -34,7 +33,7 @@ const Sidebar = ({ className }: { className: string }) => {
                 <span className={styles.menuItemIcon}>
                   {isActive ? item.activeIcon : item.icon}
                 </span>
-                <span className={styles.menuItemText}>{item.menuName}<i className={updateAppSum > 0 && item.menuName === '软件更新' ? styles.additional : styles.notAdditional}>{updateAppSum}</i> </span>
+                <span className={styles.menuItemText}>{item.menuName}</span>
               </div>
             )
           })
@@ -47,13 +46,11 @@ const Sidebar = ({ className }: { className: string }) => {
         <div className={styles.speedToolIcon}>
           <Popover
             trigger='click'
-            position='right'
-            unmountOnExit={false}
             content={
               <SpeedTool />
             }
           >
-            <Speed theme="outline" size="16" fill="var(--color-text-1)"/>
+            <Speed theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>
           </Popover>
         </div>
       </div>

@@ -12,14 +12,19 @@
         .name {
             font-weight: 600;
             font-size: 2rem;
-            color: #383838;
+            color: var(--ant-color-text);
+            text-align: left;
+        }
+
+        .step {
+            font-size: 1.25rem;
+            color: var(--ant-color-text-secondary);
             text-align: left;
         }
 
         .progress {
-            font-size: 1.25rem;
-            color: #383838;
-            text-align: left;
+            padding: 0 4rem;
+            width: 100%;
         }
     }
 
@@ -28,9 +33,9 @@
         padding: 0 4rem;
 
         .notice {
-            font-size: 0.9375rem;
-            color: #383838;
-            line-height: 1.5625rem;
+            font-size: 0.875rem;
+            color: var(--ant-color-text-tertiary);
+            line-height: 1.5rem;
             text-align: left;
         }
     }

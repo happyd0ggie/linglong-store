@@ -5,6 +5,7 @@ HERE="$(dirname "$(readlink -f "${0}")")"
 
 echo "正在执行安装前脚本..."
 bash "$HERE/setup-env.sh"
+bash "$HERE/install-deps.sh"
 
 # 启动 Electron 应用
 exec "$HERE/resources/app/linglong-store" "$@"

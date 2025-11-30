@@ -36,9 +36,9 @@
       height: 1rem;
       line-height: 1rem;
       font-size: 0.5rem;
-      color: #FFFFFF;
+      color: var(--ant-color-text-light-solid);
       text-align: center;
-      background: #FF5555;
+      background: var(--ant-color-highlight);
       border-radius: 50%;
       font-style: normal;
     }
@@ -48,14 +48,14 @@
     }
 
     &:hover {
-      background-color: var(--fill-color-3);
+      background-color: var(--ant-color-fill-secondary);
     }
 
     &.active {
-      background-color: rgb(var(--primary-2));
+      background-color: var(--ant-color-primary-bg-hover);
 
       .menuItemText {
-        color: rgb(var(--primary-6));
+        color: var(--ant-color-primary-text);
         font-weight: 500;
       }
     }

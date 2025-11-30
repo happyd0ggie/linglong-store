@@ -11,7 +11,7 @@ export default [
     ignores: ['dist', 'node_modules', 'build', 'src-tauri/target/**/*']
   },
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: {
@@ -23,6 +23,8 @@ export default [
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
         sourceType: 'module',
+        project: './tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     settings: {
@@ -81,15 +83,15 @@ export default [
       
       // React Hooks 规则
       'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'off',
       
       // 通用代码质量规则
-      'no-console': 'warn',
+      'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
       'no-debugger': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
       'no-unused-vars': 'off', // 使用 TypeScript 版本
-      'no-undef': 'error',
+      'no-undef': 'off', // 使用 TypeScript 版本
       'no-unreachable': 'error',
       'no-duplicate-case': 'error',
       'no-empty': 'warn',
@@ -185,6 +187,21 @@ export default [
           'balanced': true
         }
       }],
+    },
+  },
+  // 配置文件的 ESLint 规则（不需要类型检查）
+  {
+    files: ['eslint.config.js'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-console': 'off',
     },
   },
 ] 

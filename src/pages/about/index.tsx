@@ -1,9 +1,34 @@
-import { Descriptions } from '@arco-design/web-react'
+import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message } from 'antd'
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
 import update from '@/assets/icons/update.svg'
+import { useState, useEffect, useMemo } from 'react'
+import { getLlCliVersion } from '@/apis/invoke'
+import { getSearchAppList, suggest } from '@/apis/apps/index'
+import { useGlobalStore } from '@/stores/global'
+import { useUpdateStore } from '@/hooks/useUploadStore'
+import TextArea from 'antd/es/input/TextArea'
+
+type FieldType = {
+  classification?: string[];
+  overview?: string;
+  description?: string;
+};
+// 问题类型
+const feedOptions = ['商店缺陷', '应用更新', '应用故障']
+
 const AboutSoft = () => {
-  const linglong_data = [
+  const [open, setOpen] = useState(false)
+  const [messageApi, contextHolder] = message.useMessage()
+  const [form] = Form.useForm()
+  const [linglongVersion, setLinglongVersion] = useState<string>('1.7.4')
+  const [linglongCount, setLinglongCount] = useState<string>('未知')
+  const repoName = useGlobalStore((state) => state.repoName)
+  const arch = useGlobalStore((state) => state.arch)
+  const appVersion = useGlobalStore((state) => state.appVersion)
+  const { checkForUpdate, checking } = useUpdateStore()
+
+  const linglongData = useMemo(() => [
     {
       label: '玲珑官网',
       value: 'https://linglong.space/',
@@ -13,72 +38,174 @@ const AboutSoft = () => {
       value: 'https://store.linyaps.org.cn/',
     },
     {
-      label: '当前共收录玲珑程序数',
-      value: '4391个',
+      label: '当前已收录玲珑程序数',
+      value: linglongCount === '未知' ? '未知' : `${linglongCount} 个`,
     },
-  ]
-  const version_data = [
+  ], [linglongCount])
+
+  const versionData = useMemo(() => [
     {
       label: '当前商店版本',
-      value: '1.3.3',
+      value: appVersion,
     },
     {
       label: '当前玲珑组件版本',
-      value: '1.7.4',
-    },
-    {
-      label: '开发作者',
-      value: 'Jokul<986432015@qq.com>',
+      value: linglongVersion,
     },
     {
       label: '码云地址',
-      value: 'https://gitee.com/okul2018/linglong_store',
+      value: 'https://gitee.com/Shirosu/linglong-store',
     },
     {
-      label: 'github地址',
-      value: 'https://github.com/GershonWang/linglong-store',
+      label: 'GitHub地址',
+      value: 'https://github.com/SXFreell/linglong-store',
     },
-  ]
-  const checkVersionClick = ()=>{
-    console.log('检查版本！！！！！')
+  ], [linglongVersion])
 
-  }
-  const feedbackClick = ()=>{
-    console.log('意见反馈！！！！！')
+  const descriptionStyles = useMemo(() => ({
+    header: {
+      marginBottom: 0,
+    },
+  }), [])
 
+  const checkVersionClick = () => {
+    if (checking) {
+      return
+    }
+    checkForUpdate(appVersion, false)
   }
+
+  const feedbackClick = () => {
+    setOpen(true)
+  }
+
+  const onClose = () => {
+    setOpen(false)
+  }
+
+  const onClickSubmitForm: FormProps<FieldType>['onFinish'] = async(values) => {
+    console.info('提交反馈数据: ', values)
+    try {
+      const msg = `分类: ${values.classification?.join(', ') || '无'}\n概述: ${values.overview || '无'}\n描述: ${values.description || '无'}`
+      const res = await suggest({
+        message: msg,
+        llVersion: linglongVersion,
+        appVersion: appVersion,
+        arch: arch,
+        visitorId: `repo|${repoName}`,
+      })
+      if (res.code === 200) {
+        messageApi.success('感谢您的反馈', 1)
+        setOpen(false)
+        form.resetFields()
+      } else {
+        messageApi.error(res.message || '反馈提交失败')
+      }
+    } catch (error) {
+      console.error('Feedback error:', error)
+      messageApi.error('反馈提交失败')
+    }
+  }
+
+  useEffect(() => {
+    // 获取 ll-cli 版本并显示
+    getLlCliVersion()
+      .then((v) => {
+        if (v) {
+          setLinglongVersion(v as string)
+        }
+      })
+      .catch((e) => {
+        console.warn('Failed to get ll-cli version:', e)
+        setLinglongVersion('未知')
+      })
+  }, [])
+
+  useEffect(() => {
+    const fetchLinglongCount = async() => {
+      try {
+        const res = await getSearchAppList({
+          repoName,
+          arch,
+          pageNo: 1,
+          pageSize: 1,
+        })
+        const total = res?.data?.total
+        if (typeof total === 'number') {
+          setLinglongCount(total.toString())
+        } else {
+          setLinglongCount('未知')
+        }
+      } catch (error) {
+        console.warn('Failed to get linglong count:', error)
+        setLinglongCount('未知')
+      }
+    }
+
+    fetchLinglongCount()
+  }, [repoName, arch])
+
   return (
-    <div style={{ padding: 20 }}>
-      <p className={styles.about_app}>关于程序</p>
+    <div className={styles.aboutPage}>
+      <p className={styles.about_app}>关于软件</p>
       <div className={styles.app_info}>
         <Descriptions
-          colon=" :"
-          layout="inline-horizontal"
-          column={1}
-          title='玲珑信息'
-          data={linglong_data}
-          style={{ marginBottom: 10, marginLeft: 10 }}
-          labelStyle={{ paddingRight: 10 }}
           className={styles.des_name}
-        />
+          styles={descriptionStyles}
+          colon={true}
+          layout="horizontal"
+          column={1}
+          title='玲珑信息'> {linglongData.map((item, index) => (
+            <Descriptions.Item label={item.label} key={`${item.value}_${index}`}>{item.value}</Descriptions.Item>
+          ))}
+        </Descriptions>
       </div>
       <div className={styles.version_info}>
         <Descriptions
-          colon=" :"
-          layout="inline-horizontal"
-          column={1}
-          title='版本信息'
-          data={version_data}
-          style={{ marginBottom: 10, marginLeft: 10 }}
-          labelStyle={{ paddingRight: 10 }}
           className={styles.des_name}
-        />
+          styles={descriptionStyles}
+          colon={true}
+          layout="horizontal"
+          column={1}
+          title='版本信息'> {versionData.map((item, index) => (
+            <Descriptions.Item label={item.label} key={`${item.value}_${index}`}>{item.value}</Descriptions.Item>
+          ))}
+        </Descriptions>
       </div>
       <div className={styles.feedback}>
         <div className={styles.feed} onClick={feedbackClick}>  <img style={{ width: '1.1rem', height: '1.1rem' }} src={feedback} alt="意见反馈" /><span>意见反馈</span></div>
-        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={update} alt="检查玲珑版本" /><span>检查玲珑版本</span></div>
+        {contextHolder}
+        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={update} alt="检查新版本" /><span>检查版本</span></div>
       </div>
+      <Drawer
+        title="意见反馈"
+        onClose={onClose}
+        open={open}
+        closable={false}
+        getContainer={false}
+        destroyOnHidden={true}
+      >
+        <Form layout="horizontal" labelAlign="right" form={form} onFinish={onClickSubmitForm} clearOnDestroy={true}>
+          <Form.Item colon label="分类" name="classification">
+            <Checkbox.Group options={feedOptions} />
+          </Form.Item>
+          <Form.Item colon label="概述" name='overview'>
+            <Input />
+          </Form.Item>
+          <Form.Item colon label="描述" name='description'>
+            <TextArea rows={6} />
+          </Form.Item>
+          <Form.Item>
+            <div style={{ textAlign: 'right' }}>
+              <Button type="primary" htmlType="submit">
+                提交
+              </Button>
+            </div>
+          </Form.Item>
+        </Form>
+      </Drawer>
     </div>
   )
 }
+
 export default AboutSoft

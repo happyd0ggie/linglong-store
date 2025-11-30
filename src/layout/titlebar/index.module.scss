@@ -9,8 +9,6 @@
     -webkit-user-select: none;
     user-select: none;
     cursor: default;
-    background-color: var(--color-fill-2);
-    color: var(--text-color-1);
     padding: 0 1rem;
 
     .titlebarLeft {
@@ -27,14 +25,15 @@
     }
 
     .titlebarCenter {
-        width: 33.4375rem;
-        height: 2.25rem;
-        background: rgb(231, 231, 231);
+        width: 50%;
+        max-width: 33.4375rem;
+        height: 2rem;
+        background: var(--ant-color-border-bg);
         border-radius: 1rem;
         display: flex;
         align-items: center;
         padding: 0 0.5rem 0 1rem;
-        border: 1px solid transparent; // 添加透明边框保持布局稳定
+        border: 1px solid rgb(var(--ant-color-border-secondary));
 
         .inputBox {
             flex: 1;
@@ -42,17 +41,12 @@
             .input {
                 width: 100%;
                 border: none;
-                background: rgb(231, 231, 231);
+                background: var(--ant-color-border-bg);
+                font-size: 0.75rem;
 
                 &:focus {
                     outline: none;
-                    background: rgb(255, 255, 255);
-
-                    // 通过兄弟选择器影响父元素
-                    &~.titlebarCenter {
-                        border-color: rgb(var(--primary-6));
-                        // background: rgb(255, 255, 255);
-                    }
+                    background: var(--ant-color-bg-container);
                 }
             }
         }
@@ -60,7 +54,7 @@
         // 当包含聚焦的 input 时
         &:focus-within {
             border-color: rgb(var(--primary-6));
-            background: rgb(255, 255, 255);
+            background: var(--ant-color-bg-elevated);
         }
 
         .inputIcon {
@@ -84,9 +78,17 @@
         .title {
             cursor: pointer;
 
-            :global(.arco-icon) {
+            :global(.ant-icon) {
                 font-size: 1.2rem;
             }
+        }
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .titlebarLeft {
+        .title {
+            display: none;
         }
     }
 }

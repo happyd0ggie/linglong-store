@@ -1,79 +1,130 @@
+/**
+ * 应用配置状态管理模块
+ * 使用 Zustand 管理全局配置，并通过 @tauri-store/zustand 实现配置持久化
+ */
 import { create } from 'zustand'
 import { createTauriStore } from '@tauri-store/zustand'
-type InitStore = {
-  loadingInit: boolean;
-  updateAppSum:number;
-  arch:string,
-  repoName:string,
-  changeInitStatus: () => void;
-  getUpdateAppSum: (num:number) => void;
-  changeArch:(value:string) => void;
-  changeRepoName:(value:string) => void;
-};
-type ConfigStore = {
 
-  checkVersion: boolean;
-  showBaseService:boolean;
-  changeCheckVersionStatus:(value:boolean) => void;
-  changeBaseServiceStatus:(value:boolean) => void;
-
-};
-type SearchStore = {
- keyword: string;
-  changeKeyword:(value:string) => void;
-  resetKeyword:() => void;
-};
-// 软件初始化时，保存初始化状态，每次打开软件需获取服务
-export const useInitStore = create<InitStore>((set) => ({
-  // 首页查询的各个基础服务是否完成
-  loadingInit: false,
-  // 需要更新的APP总数量
-  updateAppSum: 0,
-  // 系统架构
-  arch: '',
-  // 仓库？默认是stable
-  repoName: 'stable',
-  // 首屏资源加载完成后状态改为true，就可以到首页了
-  changeInitStatus: () => set((_state) => ({ loadingInit: true })),
-  getUpdateAppSum: (num:number) => set((_state) => ({ updateAppSum: num })),
-  changeArch: (value:string) => set((_state) => ({
-    arch: value,
-  })),
-  changeRepoName: (value:string) => set((_state) => ({
-    repoName: value,
-  })),
-}))
-// 保持系统设置内的配置状态，持久存储
-export const useConfigStore = create<ConfigStore>((set) => ({
-  // 启动App自动检测商店版本
+/**
+ * 创建应用配置状态管理store
+ * 管理更新检查和基础服务显示等全局配置
+ */
+export const useConfigStore = create<Store.Config>((set) => ({
+  /** 是否启用版本检查功能的标志 */
   checkVersion: false,
-  // 显示基础运行服务
+  /** 是否显示基础服务应用的标志 */
   showBaseService: false,
 
-  changeCheckVersionStatus: (value:boolean) => set((_state) => ({
+  /** 点击关闭时是直接关闭还是最小化到托盘 */
+  closeOrHide: 'hide',
+  /**
+   * 更改版本检查功能的状态
+   * @param value - 新的版本检查状态
+   */
+  changeCheckVersionStatus: (value: boolean) => set((_state) => ({
     checkVersion: value,
   })),
-  changeBaseServiceStatus: (value:boolean) => set((_state) => ({
+
+  /**
+   * 更改基础服务显示状态
+   * @param value - 新的基础服务显示状态
+   */
+  changeBaseServiceStatus: (value: boolean) => set((_state) => ({
     showBaseService: value,
   })),
+  /** 更改点击关闭时记录的状态 */
 
-}))
-
-export const useSearchStore = create<SearchStore>((set) => ({
-  // 搜索关键字
-  keyword: '',
-  changeKeyword: (value:string) => set((_state) => ({
-    keyword: value,
-  })),
-  resetKeyword: () => set((_state) => ({
-    keyword: '',
+  changeCloseOrHide: (value: string) => set((_state) => ({
+    closeOrHide: value,
   })),
 }))
-// A handle to the Tauri plugin.
-// 需要持久化时使用以下代码
-export const tauriAppConfigHandler = createTauriStore('ConfigStore', useConfigStore, {
-  saveOnChange: true,
-  autoStart: true,
+
+export const useDownloadConfigStore = create<Store.DownloadConfig>((set) => ({
+  // 下载应用保存列表
+  downloadList: [],
+  // 追加app到下载列表
+  addAppToDownloadList: (app: API.APP.AppMainDto | Store.DownloadApp) => set((state) => {
+    // 检查是否已存在该应用
+    const existingIndex = state.downloadList.findIndex(item => item.appId === app.appId)
+
+    if (existingIndex !== -1) {
+      // 如果已存在，更新该应用的信息
+      const newList = [...state.downloadList]
+      newList[existingIndex] = { ...(app as API.APP.AppMainDto), flag: 'downloading' }
+      return { downloadList: newList }
+    }
+
+    // 如果不存在，追加到列表
+    return {
+      downloadList: [...state.downloadList, { ...(app as API.APP.AppMainDto), flag: 'downloading' }],
+    }
+  }),
+  // 改变APP下载状态(已下载和下载中)
+  changeAppDownloadStatus: (appId: string, status = 'downloaded') => set((state) => ({
+    downloadList: state.downloadList.map((app: Store.DownloadApp) => {
+      if (app.appId === appId) {
+        // 返回新的对象以保持不可变性
+        return { ...app, flag: status }
+      }
+      return app
+    }),
+
+  })),
+  // 更新APP安装进度
+  updateAppProgress: (appId: string, percentage: number, status: string) => set((state) => {
+    return {
+      downloadList: state.downloadList.map((app: Store.DownloadApp) => {
+        if (app.appId === appId) {
+          return {
+            ...app,
+            percentage,
+            installStatus: status,
+            // 如果达到100%，将状态改为已下载
+            flag: percentage >= 100 ? 'downloaded' : 'downloading',
+          }
+        }
+        return app
+      }),
+    }
+  }),
+  // 清空下载列表
+  clearDownloadList: () => set((state) => ({
+    downloadList: state.downloadList.filter((app: Store.DownloadApp) => app.flag === 'downloading'),
+  })),
+  // 移除下载中的应用
+  removeDownloadingApp: (appId: string) => set((state) => ({
+    downloadList: state.downloadList.filter((app: Store.DownloadApp) => app.appId !== appId),
+  })),
+}))
+
+/**
+ * 全局应用配置的持久化存储实例
+ * 使用 @tauri-store/zustand 将配置保存到本地磁盘
+ * @param saveOnChange - 配置变更时自动保存
+ * @param autoStart - 应用启动时自动初始化
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const tauriAppConfigHandler = createTauriStore('ConfigStore', useConfigStore as any, {
+  saveOnChange: true, // 配置变更时自动保存到磁盘
+  autoStart: true, // 应用启动时自动从磁盘加载配置
 })
 
+// 保存下载列表
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const tauriDownloadConfigHandler = createTauriStore('downloadConfigStore', useDownloadConfigStore as any, {
+  saveOnChange: true, // 配置变更时自动保存到磁盘
+  autoStart: false, // 禁用自动启动，我们手动加载并过滤
+})
 
+// 手动启动并过滤掉 downloading 状态的残留数据
+tauriDownloadConfigHandler.start().then(() => {
+  const state = useDownloadConfigStore.getState()
+  const originalCount = state.downloadList.length
+
+  // 过滤掉正在下载中的残留数据
+  const filteredList = state.downloadList.filter((app: Store.DownloadApp) => app.flag !== 'downloading')
+
+  if (filteredList.length < originalCount) {
+    useDownloadConfigStore.setState({ downloadList: filteredList })
+  }
+})

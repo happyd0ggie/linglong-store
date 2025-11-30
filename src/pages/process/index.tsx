@@ -1,6 +1,6 @@
-import { Table, Button, Message } from '@arco-design/web-react'
+import { Table, Button, message } from 'antd'
 import { useState, useEffect } from 'react'
-import { getRunningLinglongApps, killLinglongApp } from '../../apis'
+import { getRunningLinglongApps, killLinglongApp } from '@/apis/invoke'
 
 interface LinglongAppInfo {
   key: string
@@ -25,8 +25,9 @@ const Process = () => {
         key: (index + 1).toString(),
       }))
       setData(formattedApps)
-    } catch {
-      Message.error('获取运行中的玲珑应用失败')
+    } catch (error) {
+      console.error('[fetchRunningApps] Error fetching apps:', error)
+      message.error(`获取运行中的玲珑应用失败: ${error}`)
     }
   }
 
@@ -49,11 +50,12 @@ const Process = () => {
     try {
       setLoading(record.name)
       await killLinglongApp(record.name)
-      Message.success(`成功停止 ${record.name}`)
+      // message.success(`成功停止 ${record.name}`)
       // 刷新列表
       await fetchRunningApps()
     } catch (error) {
-      Message.error(`停止 ${record.name} 失败: ${error}`)
+      console.error('[processClick] Error killing app:', record.name, error)
+      message.error(`停止 ${record.name} 失败: ${error}`)
     } finally {
       setLoading(null)
     }
@@ -69,9 +71,9 @@ const Process = () => {
       // 复制命令到剪贴板
       await navigator.clipboard.writeText(command)
 
-      Message.success('命令已复制到剪贴板，请粘贴到终端中执行')
+      message.success('命令已复制到剪贴板，请粘贴到终端中执行')
     } catch (error) {
-      Message.error(`复制命令失败: ${error}`)
+      message.error(`复制命令失败: ${error}`)
     }
   }
 
@@ -136,6 +138,7 @@ const Process = () => {
       title: '操作',
       dataIndex: 'operate',
       align: 'center' as const,
+      minWidth: 200,
       headerCellStyle: {
         backgroundColor: 'var(--color-bg-2)',
       },
@@ -143,13 +146,15 @@ const Process = () => {
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
           <Button
             type='primary'
+            size='small'
             onClick={() => enterContainerClick(record)}
           >
             进入容器
           </Button>
           <Button
             type='primary'
-            status='danger'
+            size='small'
+            danger
             onClick={() => processClick(record)}
             loading={loading === record.name}
           >
@@ -164,13 +169,9 @@ const Process = () => {
     <div style={{ padding: 20 }}>
       <Table
         columns={columns}
-        data={data}
-        hover
-        pagePosition='bottomCenter'
-        border={{
-          wrapper: true,
-          headerCell: true,
-        }}
+        dataSource={data}
+        loading={loading !== null}
+        scroll={{ x: 'max-content' }}
       />
     </div>
   )

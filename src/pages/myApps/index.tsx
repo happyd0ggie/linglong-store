@@ -1,32 +1,27 @@
-import { useEffect, useState } from 'react'
-import { Spin, Empty, Badge, Message } from '@arco-design/web-react'
+import { useEffect, useState, useRef } from 'react'
+import { Empty } from 'antd'
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useInstalledAppsStore } from '@/stores/installedApps'
-import { useConfigStore } from '@/stores/appConfig'
-import type { InstalledApp } from '@/apis/types'
+// import { useConfigStore } from '@/stores/appConfig'
+// import { uninstallApp } from '@/apis/invoke'
 
-const MyApplications = ()=>{
+const MyApplications = () => {
   const {
     installedApps,
-    loading,
-    error,
-    fetchInstalledApps,
+    // fetchInstalledApps,
   } = useInstalledAppsStore()
 
-  const { showBaseService } = useConfigStore()
-  const [mergedApps, setMergedApps] = useState<InstalledApp[]>([])
-
-  useEffect(() => {
-    // 加载已安装应用列表
-    fetchInstalledApps(showBaseService)
-  }, [showBaseService, fetchInstalledApps])
+  // const { showBaseService } = useConfigStore()
+  const [mergedApps, setMergedApps] = useState<API.INVOKE.InstalledApp[]>([])
+  const listRef = useRef<HTMLDivElement>(null)
+  // const [uninstallingAppId, setUninstallingAppId] = useState<string | null>(null)
 
   useEffect(() => {
     // 合并同appId的应用（显示最新版本，记录版本数）
     if (installedApps.length > 0) {
       const grouped = installedApps.reduce<Record<string, {
-        app: InstalledApp;
+        app: API.INVOKE.InstalledApp;
         count: number;
         highestVersion: string;
       }>>((acc, app) => {
@@ -81,45 +76,47 @@ const MyApplications = ()=>{
     return 0
   }
 
-  const handleUninstall = (_app: InstalledApp) => {
-    Message.info('卸载功能开发中...')
-    // TODO: 实现卸载逻辑
-  }
+  // // 处理卸载操作
+  // const handleUninstall = (app: API.INVOKE.InstalledApp) => {
+  //   Modal.confirm({
+  //     title: '确认卸载',
+  //     content: `确定要卸载 ${app.zhName || app.name || app.appId} 的版本 ${app.version} 吗？`,
+  //     okText: '确定',
+  //     cancelText: '取消',
+  //     onOk: async() => {
+  //       setUninstallingAppId(app.appId)
+  //       try {
+  //         await uninstallApp(app.appId, app.version)
+  //         message.success('卸载成功')
 
-  if (error) {
-    return (
-      <div style={{ padding: 20 }}>
-        <p className={styles.myAppTitle}>我的应用：</p>
-        <Empty description={`加载失败: ${error}`} />
-      </div>
-    )
-  }
+  //         // 重新获取已安装应用列表
+  //         await fetchInstalledApps(showBaseService)
+  //       } catch (error) {
+  //         console.error('[handleUninstall] 卸载失败:', error)
+  //         message.error(`卸载失败: ${error}`)
+  //       } finally {
+  //         setUninstallingAppId(null)
+  //       }
+  //     },
+  //   })
+  // }
 
   return (
-    <div style={{ padding: 20 }}>
-      <p className={styles.myAppTitle}>我的应用：</p>
-      <Spin loading={loading} style={{ display: 'block' }}>
-        {mergedApps.length > 0 ? (
-          <div className={styles.myApplicationList}>
-            {mergedApps.map((app, index) => (
-              <Badge
-                key={`${app.appId}-${index}`}
-                count={app.occurrenceNumber && app.occurrenceNumber > 1 ? app.occurrenceNumber : 0}
-                maxCount={99}
-              >
-                <ApplicationCard
-                  operateId={0}
-                  options={app as Partial<InstalledApp> & Record<string, unknown>}
-                  loading={app.loading}
-                  onOperate={() => handleUninstall(app)}
-                />
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <Empty description="暂无已安装应用" />
-        )}
-      </Spin>
+    <div className={styles.myAppsPage} ref={listRef}>
+      <div className={styles.title}>我的应用</div>
+      {mergedApps.length > 0 ? <div className={styles.applicationList}>
+        {
+          mergedApps.map((item, index) => {
+            return (
+              <ApplicationCard
+                key={`${item.appId}_${index}`}
+                appInfo={item}
+                operateId={0}
+              />
+            )
+          })
+        }
+      </div> : <Empty description="暂无已安装应用" />}
     </div>
   )
 }

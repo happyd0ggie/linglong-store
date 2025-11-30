@@ -1,52 +1,118 @@
+/**
+ * 应用布局组件
+ * 包含标题栏、侧边栏和主内容区域
+ * 负责应用初始化和主界面布局
+ */
+
 import styles from './index.module.scss'
 import { Outlet } from 'react-router-dom'
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import Titlebar from './titlebar'
 import Sidebar from './sidebar'
 import LaunchPage from './launchPage'
 import Loading from '../components/Loading'
-import { useInitStore } from '@/stores/appConfig'
-import { arch } from '@tauri-apps/plugin-os'
-const Layout = () => {
-  const changeInitStatus = useInitStore((state) => state.changeInitStatus)
-  const getUpdateAppSum = useInitStore((state) => state.getUpdateAppSum)
-  const changeArch = useInitStore((state) => state.changeArch)
-  const [isInit, setIsInit] = useState(true)
+
+import { useGlobalStore } from '@/stores/global'
+import { useUpdatesStore } from '@/stores/updates'
+import { useConfigStore } from '@/stores/appConfig'
+import { useInstalledAppsStore } from '@/stores/installedApps'
+// import { arch } from '@tauri-apps/plugin-os'
+
+// 暂时注释的 Antd Layout 组件，可能用于未来的布局重构
+// import { Layout } from 'antd'
+// const { Header, Sider, Content } = Layout
+
+/**
+ * 主应用布局组件
+ * 管理应用的初始化状态和主要布局结构
+ */
+const AppLayout = () => {
+  const { isInited } = useGlobalStore()
+  const startAutoRefresh = useUpdatesStore(state => state.startAutoRefresh)
+  const stopAutoRefresh = useUpdatesStore(state => state.stopAutoRefresh)
+
   useEffect(() => {
-    // 获取系统架构
-    const currentArch = arch()
-    changeArch(currentArch)
-    // 每次渲染后都会执行此处的代码
-    const timer = setTimeout(()=>{
-      // 首屏需要加载和查询的配置完成后更改初始化状态
-      setIsInit(false)
-      changeInitStatus()
-      // 获取需要更新的APP数量
-      getUpdateAppSum(Math.floor(Math.random() * 10))
-    }, 3000)
-    return ()=>{
-      clearTimeout(timer)
+    startAutoRefresh()
+    return () => {
+      stopAutoRefresh()
     }
-  })
+  }, [startAutoRefresh, stopAutoRefresh])
+  // // 从全局状态store中获取初始化相关方法
+  // const onInited = useGlobalStore((state) => state.onInited)
+  // const getUpdateAppNum = useGlobalStore((state) => state.getUpdateAppNum)
+  // const changeArch = useGlobalStore((state) => state.setArch)
+
+
+  /** 从已安装应用store中获取更新和加载方法 */
+  const {
+    // needUpdateApps,
+    fetchInstalledApps,
+  } = useInstalledAppsStore()
+
+  /** 从配置store中获取是否显示基础服务的设置 */
+  const { showBaseService } = useConfigStore()
+
+  /** 监听基础服务显示配置变化，重新加载应用列表 */
+  useEffect(() => {
+    fetchInstalledApps(showBaseService)
+  }, [showBaseService, fetchInstalledApps])
+
+  // /**
+  //  * 应用初始化效果
+  //  * 1. 获取并设置系统架构
+  //  * 2. 完成初始化配置
+  //  * 3. 统计需要更新的应用数量
+  //  */
+  // useEffect(() => {
+  //   const currentArch = arch()
+  //   changeArch(currentArch)
+  //   setIsInit(true) // 修复: 初始化完成后应该设置为 true
+  //   onInited()
+  //   getUpdateAppNum(needUpdateApps.length || 0)
+  // }, [])
+
+  /**
+   * 渲染应用布局
+   * 初始化时显示启动页面
+   * 初始化完成后显示主布局（包含侧边栏和内容区）
+   */
   return (
     <div className={styles.layout}>
-      <Titlebar/>
+      {/* 标题栏组件，始终显示 */}
+      <Titlebar showSearch={isInited} showDownload={isInited} />
       {
-        isInit ? <LaunchPage /> : <div className={styles.layoutContent}>
+        // 根据初始化状态决定显示启动页还是主布局
+        isInited ? <div className={styles.layoutContent}>
+          {/* 侧边栏导航 */}
           <Sidebar className={styles.sider} />
+          {/* 主内容区域，使用 Suspense 处理异步加载 */}
           <div className={styles.content}>
-            <div className={styles.contentInner}>
-              <Suspense fallback={<Loading />}>
-                <Outlet />
-              </Suspense>
-            </div>
+            <Suspense fallback={<Loading />}>
+              <Outlet />
+            </Suspense>
           </div>
-        </div>
+        </div> : <LaunchPage />
       }
-
-
     </div>
   )
+  // 备选的 Antd Layout 布局方案
+  // return (
+  //   <Layout>
+  //     <Header>
+  //       <Titlebar/>
+  //     </Header>
+  //     <Layout>
+  //       <Sider>
+  //         <Sidebar className={styles.sider} />
+  //       </Sider>
+  //       <Content className={styles.content}>
+  //         <Suspense fallback={<Loading />}>
+  //           <Outlet />
+  //         </Suspense>
+  //       </Content>
+  //     </Layout>
+  //   </Layout>
+  // )
 }
 
-export default Layout
+export default AppLayout
