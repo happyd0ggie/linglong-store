@@ -29,10 +29,10 @@ export const getAppDetails = (data: API.APP.AppDetailsVO[]) => {
 /**
  * 获取应用详情（包含截图）
  * @param data 应用id和架构信息数组
- * @returns 应用详情
+ * @returns 应用详情 Map<appId, AppDetailVO[]>
  */
-export const getAppDetail = (data: API.APP.AppDetailsVO[]) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppDetailsRes>>('/app/getAppDetail', data)
+export const getAppDetail = (data: API.APP.AppDetailSearchBO[]) => {
+  return post<API.Common.BaseResponse<API.APP.GetAppDetailRes>>('/app/getAppDetail', data)
 }
 
 /**

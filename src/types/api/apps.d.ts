@@ -149,7 +149,7 @@ declare namespace API {
         }
 
         /**
-         * 应用详情查询参数
+         * 应用详情查询参数（/visit/getAppDetails）
          */
         interface AppDetailsVO {
             /** 应用ID */
@@ -164,6 +164,16 @@ declare namespace API {
             module?: string
             /** 架构 */
             arch?: string
+        }
+
+        /**
+         * 应用详情查询参数（/app/getAppDetail）
+         */
+        interface AppDetailSearchBO {
+            /** App包名 */
+            appId: string
+            /** 当前系统的架构 */
+            arch: string
         }
 
         /**
@@ -295,14 +305,14 @@ declare namespace API {
         type GetAppListRes = API.Common.IPageData<AppMainDto>
 
         /**
-         * 获取应用详情 - 响应参数（数组）
+         * 获取应用详情 - 响应参数（/visit/getAppDetails）
          */
         type GetAppDetailsRes = AppMainDto[]
 
         /**
-         * 获取应用详情 - 响应参数
+         * 获取应用详情 - 响应参数（/app/getAppDetail）
          */
-        type GetAppDetailsRes = Record<string, AppMainDto[]>;
+        type GetAppDetailRes = Record<string, AppMainDto[]>;
 
         /**
          * 获取轮播图列表 - 响应参数

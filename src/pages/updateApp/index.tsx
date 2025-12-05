@@ -1,78 +1,150 @@
 import { Spin, Empty, Button, message } from 'antd'
-import { useState } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { ReloadOutlined } from '@ant-design/icons'
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useCheckUpdates, type UpdateInfo } from '@/hooks/useCheckUpdates'
 import { installApp } from '@/apis/invoke'
+import { useDownloadConfigStore } from '@/stores/appConfig'
+
+// ==================== 类型定义 ====================
+
+/** 应用卡片展示信息 */
+interface AppCardInfo {
+  appId: string
+  name: string
+  version: string
+  description: string
+  icon: string
+  arch: string
+  zhName: string
+}
+
+// ==================== 辅助函数 ====================
+
+/**
+ * 将 UpdateInfo 转换为 ApplicationCard 需要的格式
+ */
+const mapUpdateInfoToCardOptions = (info: UpdateInfo): AppCardInfo => ({
+  appId: info.appId,
+  name: info.name,
+  version: info.version,
+  description: info.description,
+  icon: info.icon,
+  arch: info.arch,
+  zhName: info.zhName || info.name,
+})
+
+// ==================== 组件 ====================
 
 const UpdateApp = () => {
-  const { loading: checking, updates } = useCheckUpdates()
-  const [installingApps, setInstallingApps] = useState<Set<string>>(new Set())
+  const { loading: checking, updates, checkUpdates } = useCheckUpdates()
+  const { addAppToDownloadList, downloadList } = useDownloadConfigStore()
+
   const [updatingAll, setUpdatingAll] = useState(false)
 
-  const handleUpdateApp = async(app: UpdateInfo) => {
-    if (installingApps.has(app.appId)) {
+  // 获取正在下载/更新中的应用ID集合
+  const installingAppIds = useMemo(() => {
+    const downloadingApps = downloadList.filter(app => app.flag === 'downloading')
+    return new Set(downloadingApps.map(app => app.appId).filter(Boolean) as string[])
+  }, [downloadList])
+
+  /**
+   * 更新单个应用
+   * 将应用添加到下载列表并调用安装接口
+   */
+  const handleUpdateApp = useCallback(async(app: UpdateInfo) => {
+    if (installingAppIds.has(app.appId)) {
+      message.warning(`${app.zhName || app.name} 正在更新中`)
       return
     }
 
-    setInstallingApps(prev => new Set(prev).add(app.appId))
     try {
-      message.loading({ content: `正在更新 ${app.name}...`, key: app.appId })
+      // 添加到下载列表，显示进度
+      addAppToDownloadList({
+        appId: app.appId,
+        name: app.name,
+        zhName: app.zhName,
+        icon: app.icon,
+        version: app.version,
+        description: app.description,
+        arch: app.arch,
+        flag: 'downloading',
+        percentage: 0,
+        installStatus: '准备更新...',
+      })
+
       // 调用安装接口，传入新版本号
       await installApp(app.appId, app.version)
-      message.success({ content: `${app.name} 更新请求已提交`, key: app.appId })
-      // 注意：这里不立即移除 installing 状态，因为安装是异步的，
-      // 理想情况下应该监听安装进度事件来更新状态。
-      // 但为了简化交互，我们可以在一段时间后移除，或者依赖全局安装状态管理。
-      // 这里简单处理，3秒后移除 loading 状态，假设用户会去查看进度
-      setTimeout(() => {
-        setInstallingApps(prev => {
-          const next = new Set(prev)
-          next.delete(app.appId)
-          return next
-        })
-      }, 3000)
-    } catch (error) {
-      console.error(`Failed to update ${app.name}:`, error)
-      message.error({ content: `${app.name} 更新失败`, key: app.appId })
-      setInstallingApps(prev => {
-        const next = new Set(prev)
-        next.delete(app.appId)
-        return next
-      })
-    }
-  }
+      message.success({ content: `${app.zhName || app.name} 更新请求已提交`, key: app.appId })
 
-  const handleUpdateAll = async() => {
+    } catch (error) {
+      console.error(`[UpdateApp] Failed to update ${app.appId}:`, error)
+      message.error({ content: `${app.zhName || app.name} 更新失败`, key: app.appId })
+    }
+  }, [installingAppIds, addAppToDownloadList])
+
+  /**
+   * 一键更新所有应用
+   * 串行提交更新请求，避免瞬间并发过高
+   */
+  const handleUpdateAll = useCallback(async() => {
     if (updates.length === 0) {
       return
     }
-    setUpdatingAll(true)
 
-    // 串行提交更新请求，避免瞬间并发过高
+    setUpdatingAll(true)
+    message.loading({ content: '正在提交更新请求...', key: 'update-all' })
+
+    let successCount = 0
+    let failCount = 0
+
+    // 串行提交更新请求
     for (const app of updates) {
-      if (!installingApps.has(app.appId)) {
-        await handleUpdateApp(app)
+      if (!installingAppIds.has(app.appId)) {
+        try {
+          await handleUpdateApp(app)
+          successCount++
+        } catch {
+          failCount++
+        }
       }
     }
 
     setUpdatingAll(false)
-  }
 
-  // 将 UpdateInfo 转换为 ApplicationCard 需要的格式
-  const mapUpdateInfoToCardOptions = (info: UpdateInfo) => ({
-    appId: info.appId,
-    name: info.name,
-    version: info.version, // 显示新版本
-    description: info.description,
-    icon: info.icon,
-    arch: info.arch,
-    zhName: info.zhName || info.name,
-  })
+    // 显示结果汇总
+    if (failCount === 0) {
+      message.success({ content: `已提交 ${successCount} 个应用的更新请求`, key: 'update-all' })
+    } else {
+      message.warning({ content: `成功 ${successCount} 个，失败 ${failCount} 个`, key: 'update-all' })
+    }
+  }, [updates, installingAppIds, handleUpdateApp])
+
+  /**
+   * 手动检查更新
+   */
+  const handleCheckUpdates = useCallback(() => {
+    checkUpdates(true)
+    message.info('正在检查更新...')
+  }, [checkUpdates])
+
+  // 是否禁用一键更新按钮
+  const isUpdateAllDisabled = updatingAll || installingAppIds.size > 0 || updates.length === 0
 
   return (
     <div className={styles.container}>
-      <p className={styles.updateAppTitle}>更新应用：</p>
+      <div className={styles.header}>
+        <p className={styles.updateAppTitle}>更新应用：</p>
+        <Button
+          type="text"
+          icon={<ReloadOutlined spin={checking} />}
+          onClick={handleCheckUpdates}
+          disabled={checking}
+        >
+          检查更新
+        </Button>
+      </div>
 
       <Spin spinning={checking && updates.length === 0} tip="正在检查更新...">
         {updates.length > 0 ? (
@@ -88,16 +160,16 @@ const UpdateApp = () => {
               ))}
             </div>
 
-            <div className={styles.floatingBtnContainer} >
+            <div className={styles.floatingBtnContainer}>
               <Button
                 type="primary"
                 size="large"
                 shape="round"
                 onClick={handleUpdateAll}
                 loading={updatingAll}
-                disabled={updatingAll || installingApps.size > 0}
+                disabled={isUpdateAllDisabled}
               >
-                    一键更新
+                一键更新 ({updates.length})
               </Button>
             </div>
           </>
