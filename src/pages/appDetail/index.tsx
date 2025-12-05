@@ -163,6 +163,17 @@ const AppDetail = () => {
     return installedVersionSet.has(latestVersion)
   }, [latestVersion, installedVersionSet])
 
+  const latestInstalledVersion = useMemo(() => {
+    const versionList = Array.from(installedVersionSet).filter(Boolean) as string[]
+    if (versionList.length === 0) {
+      return undefined
+    }
+
+    return versionList.reduce<string>((acc, curr) => {
+      return compareVersions(curr, acc) > 0 ? curr : acc
+    }, versionList[0])
+  }, [installedVersionSet])
+
   const hasInstalledVersion = useMemo(() => installedVersionSet.size > 0, [installedVersionSet])
 
   const refreshInstalledVersions = async(): Promise<Set<string>> => {
@@ -364,16 +375,40 @@ const AppDetail = () => {
     await installApp(currentApp.appId, version, force)
   }
 
+  const confirmDowngradeInstall = (currentVersion: string, targetVersion: string) => {
+    return new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: '确认覆盖安装',
+        content: `已安装更高版本（${currentVersion}），确认安装旧版本 ${targetVersion} 吗？降级安装可能导致应用无法正常使用。请确认您已备份重要数据。`,
+        okText: '继续安装',
+        cancelText: '取消',
+        centered: true,
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      })
+    })
+  }
+
   const handleVersionInstall = async(versionInfo: VersionInfo) => {
     if (!versionInfo.version) {
       message.error('缺少版本信息，无法安装')
       return
     }
 
+    const needForceInstall = latestInstalledVersion !== undefined
+      && compareVersions(latestInstalledVersion, versionInfo.version) > 0
+
+    if (needForceInstall) {
+      const confirmed = await confirmDowngradeInstall(latestInstalledVersion, versionInfo.version)
+      if (!confirmed) {
+        return
+      }
+    }
+
     setIsInstalling(true)
     setInstallingVersion(versionInfo.version)
     try {
-      await runInstall(versionInfo.version, false, false, versionInfo)
+      await runInstall(versionInfo.version, needForceInstall, false, versionInfo)
       message.success({ content: '安装成功！', key: 'install' })
       await refreshInstalledVersions()
     } catch (error) {
