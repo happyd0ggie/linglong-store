@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 use crate::services::ll_cli_command;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
