@@ -8,7 +8,6 @@ use services::installed::{
     search_app_versions,
     run_linglong_app,
     install_linglong_app,
-    cancel_install_app,
     InstalledApp,
 };
 use services::linglong::{search_remote_app, get_ll_cli_version, SearchResultItem};
@@ -78,14 +77,6 @@ async fn install_app(
     result
 }
 
-#[tauri::command]
-async fn cancel_install(app_handle: tauri::AppHandle, app_id: String) -> Result<String, String> {
-    println!("[cancel_install] Command invoked: app_id={}", app_id);
-    let result = cancel_install_app(app_handle, app_id.clone()).await;
-    println!("[cancel_install] Command result for {}: {:?}", app_id, result);
-    result
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -106,7 +97,6 @@ pub fn run() {
             search_versions,
             run_app,
             install_app,
-            cancel_install,
             search_remote_app_cmd
             , get_ll_cli_version_cmd
         ])

@@ -97,37 +97,6 @@ declare namespace Store {
     clearApps: () => void;
   }
 
-  /**
-   * Download Config Store（下载配置存储）
-   * 管理应用下载列表及其状态
-   */
-  interface DownloadConfig {
-    /** 单个下载项，基于后端 AppMainDto 并附加本地状态字段 */
-    downloadList: DownloadApp[]
-    /** 追加app到下载列表 */
-    addAppToDownloadList: (app: DownloadApp) => void
-    /** 改变APP下载状态(已下载和下载中) */
-    changeAppDownloadStatus: (appId: string, status: string) => void
-    /** 更新APP安装进度 */
-    updateAppProgress: (appId: string, percentage: number, status: string) => void
-    /** 清空下载列表 */
-    clearDownloadList: () => void
-    /** 移除下载中的应用 */
-    removeDownloadingApp: (appId: string) => void
-  }
-
-  /**
-   * 本地下载项类型：在后端 AppMainDto 基础上，增加本地标记字段 `flag`（例如："pending", "downloading", "done"）
-   * @deprecated 请使用 InstallQueue Store 替代
-   */
-  interface DownloadApp extends API.APP.AppMainDto {
-    flag?: string
-    /** 安装进度百分比 (0-100) */
-    percentage?: number
-    /** 安装状态文本 */
-    installStatus?: string
-  }
-
   // ==================== 安装队列 Store ====================
 
   /**
