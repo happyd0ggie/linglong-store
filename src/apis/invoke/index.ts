@@ -82,11 +82,15 @@ export const installApp = async(
 }
 
 /**
+ * @deprecated 取消安装功能已下线
+ * 新的安装队列不支持取消操作，请勿使用此函数
+ *
  * 取消正在进行的应用安装
  * @param appId - 要取消安装的应用ID
  * @returns Promise<string> 取消操作的结果
  */
 export const cancelInstallApp = async(appId: string): Promise<string> => {
+  console.warn('[cancelInstallApp] 此功能已废弃，取消安装不再支持')
   try {
     const result = await invoke('cancel_install', { appId })
     return result as string
@@ -124,6 +128,9 @@ export const onInstallProgress = async(
 }
 
 /**
+ * @deprecated 取消安装功能已下线
+ * 新的安装队列不支持取消操作，请勿使用此监听器
+ *
  * 监听安装取消事件
  * @param callback - 取消回调函数
  * @returns Promise<UnlistenFn> 取消监听的函数
@@ -142,6 +149,7 @@ export const onInstallProgress = async(
 export const onInstallCancelled = async(
   callback: (event: { appId: string; cancelled: boolean; message: string }) => void,
 ): Promise<UnlistenFn> => {
+  console.warn('[onInstallCancelled] 此功能已废弃，取消安装事件不再触发')
   return await listen<{ appId: string; cancelled: boolean; message: string }>(
     'install-cancelled',
     (event) => {

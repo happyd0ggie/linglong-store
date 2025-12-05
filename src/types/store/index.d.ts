@@ -118,6 +118,7 @@ declare namespace Store {
 
   /**
    * 本地下载项类型：在后端 AppMainDto 基础上，增加本地标记字段 `flag`（例如："pending", "downloading", "done"）
+   * @deprecated 请使用 InstallQueue Store 替代
    */
   interface DownloadApp extends API.APP.AppMainDto {
     flag?: string
@@ -125,5 +126,143 @@ declare namespace Store {
     percentage?: number
     /** 安装状态文本 */
     installStatus?: string
+  }
+
+  // ==================== 安装队列 Store ====================
+
+  /**
+   * 安装任务状态枚举
+   */
+  type InstallTaskStatus = 'pending' | 'installing' | 'success' | 'failed'
+
+  /**
+   * 安装任务
+   * 代表队列中的一个安装/更新任务
+   */
+  interface InstallTask {
+    /** 唯一任务ID */
+    id: string
+    /** 应用ID */
+    appId: string
+    /** 应用完整信息（含图标、名称等） */
+    appInfo: API.APP.AppMainDto
+    /** 指定版本（可选，不指定则安装最新版本） */
+    version?: string
+    /** 是否强制安装 */
+    force: boolean
+    /** 任务状态 */
+    status: InstallTaskStatus
+    /** 安装进度百分比 (0-100) */
+    progress: number
+    /** 状态消息 */
+    message: string
+    /** 错误信息（如果失败） */
+    error?: string
+    /** 入队时间戳 */
+    createdAt: number
+    /** 开始安装时间戳 */
+    startedAt?: number
+    /** 结束时间戳 */
+    finishedAt?: number
+  }
+
+  /**
+   * Install Queue Store（安装队列存储）
+   * 统一管理应用安装队列，支持串行安装、失败隔离
+   */
+  interface InstallQueue {
+    /** 待安装任务队列 */
+    queue: InstallTask[]
+    /** 当前正在执行的任务（只持久化这个） */
+    currentTask: InstallTask | null
+    /** 已完成/失败的任务历史（用于UI显示，不持久化） */
+    history: InstallTask[]
+    /** 队列是否正在处理中 */
+    isProcessing: boolean
+
+    /**
+     * 添加安装任务到队列
+     * @param appInfo - 应用信息
+     * @param options - 安装选项（版本、是否强制）
+     * @returns 任务ID
+     */
+    enqueueInstall: (
+      appInfo: API.APP.AppMainDto,
+      options?: { version?: string; force?: boolean }
+    ) => string
+
+    /**
+     * 批量添加安装任务到队列
+     * @param tasks - 任务列表
+     * @returns 任务ID列表
+     */
+    enqueueBatch: (
+      tasks: Array<{ appInfo: API.APP.AppMainDto; version?: string; force?: boolean }>
+    ) => string[]
+
+    /**
+     * 开始处理队列（内部自动调用，通常不需要手动调用）
+     */
+    processQueue: () => Promise<void>
+
+    /**
+     * 更新当前任务进度
+     * @param appId - 应用ID
+     * @param progress - 进度百分比
+     * @param message - 状态消息
+     */
+    updateProgress: (appId: string, progress: number, message: string) => void
+
+    /**
+     * 标记当前任务完成
+     * @param appId - 应用ID
+     */
+    markSuccess: (appId: string) => void
+
+    /**
+     * 标记当前任务失败
+     * @param appId - 应用ID
+     * @param error - 错误信息
+     */
+    markFailed: (appId: string, error: string) => void
+
+    /**
+     * 清空历史记录
+     */
+    clearHistory: () => void
+
+    /**
+     * 从队列中移除待安装任务（仅限 pending 状态）
+     * @param taskId - 任务ID
+     */
+    removeFromQueue: (taskId: string) => void
+
+    /**
+     * 检查应用是否在队列中或正在安装
+     * @param appId - 应用ID
+     */
+    isAppInQueue: (appId: string) => boolean
+
+    /**
+     * 获取应用的安装状态（用于UI显示）
+     * @param appId - 应用ID
+     */
+    getAppInstallStatus: (appId: string) => InstallTask | null
+
+    /**
+     * 启动时恢复检查：检查持久化的 currentTask 是否已完成
+     * @param installedApps - 当前已安装的应用列表
+     */
+    checkRecovery: (installedApps: API.INVOKE.InstalledApp[]) => void
+
+    /**
+     * 持久化当前任务到本地存储
+     */
+    persistCurrentTask: () => void
+
+    /**
+     * 从本地存储加载持久化的任务
+     */
+    loadPersistedTask: () => InstallTask | null
   }
 }

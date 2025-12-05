@@ -8,7 +8,8 @@ import { SetStateAction, useEffect, useState } from 'react'
 import { Close, Copy, Minus, Square } from '@icon-park/react'
 import { Popover, message } from 'antd'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useConfigStore, useDownloadConfigStore } from '@/stores/appConfig'
+import { useConfigStore } from '@/stores/appConfig'
+import { useInstallQueueStore } from '@/stores/installQueue'
 import { useSearchStore } from '@/stores/global'
 import searchIcon from '@/assets/icons/searchIcon.svg'
 import cleanIcon from '@/assets/icons/clean.svg'
@@ -24,7 +25,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownload: boolean }) => {
   /** 应用初始化状态 */
   const closeOrHide = useConfigStore((state) => state.closeOrHide)
-  const downloadList = useDownloadConfigStore((state) => state.downloadList)
+  /** 当前安装任务 */
+  const currentTask = useInstallQueueStore((state) => state.currentTask)
   /** 全局搜索关键词 */
   const keyword = useSearchStore((state) => state.keyword)
   /** 更新搜索关键词的方法 */
@@ -57,12 +59,11 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
     }
   }
   /**
-   * 监听下载列表变化，更新是否有下载中的应用标志
+   * 监听当前安装任务变化，更新是否有下载中的应用标志
    */
   useEffect(() => {
-    const downloading = downloadList.some((app) => app.flag === 'downloading')
-    setHasDownloading(downloading)
-  }, [downloadList])
+    setHasDownloading(currentTask !== null)
+  }, [currentTask])
   /**
    * 监听窗口状态变化
    * 初始化最大化状态并监听窗口大小变化

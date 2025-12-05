@@ -39,6 +39,12 @@ export const useConfigStore = create<Store.Config>((set) => ({
   })),
 }))
 
+/**
+ * @deprecated 此 Store 已被 InstallQueueStore 替代，请使用 useInstallQueueStore
+ * @see src/stores/installQueue.ts
+ *
+ * 保留此代码仅用于兼容性，将在后续版本移除
+ */
 export const useDownloadConfigStore = create<Store.DownloadConfig>((set) => ({
   // 下载应用保存列表
   downloadList: [],
@@ -109,13 +115,21 @@ export const tauriAppConfigHandler = createTauriStore('ConfigStore', useConfigSt
   autoStart: true, // 应用启动时自动从磁盘加载配置
 })
 
-// 保存下载列表
+/**
+ * @deprecated 此持久化处理器已被废弃
+ * 新的安装任务持久化通过 InstallQueueStore.persistCurrentTask 实现
+ * @see src/stores/installQueue.ts
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const tauriDownloadConfigHandler = createTauriStore('downloadConfigStore', useDownloadConfigStore as any, {
   saveOnChange: true, // 配置变更时自动保存到磁盘
   autoStart: false, // 禁用自动启动，我们手动加载并过滤
 })
 
+/**
+ * @deprecated 下载列表过滤逻辑已被废弃
+ * 新的崩溃恢复机制通过 InstallQueueStore.checkRecovery 实现
+ */
 // 手动启动并过滤掉 downloading 状态的残留数据
 tauriDownloadConfigHandler.start().then(() => {
   const state = useDownloadConfigStore.getState()

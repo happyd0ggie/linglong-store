@@ -1,47 +1,77 @@
 /**
  * 全局安装进度监听 Hook
- * 监听所有应用的安装进度事件和取消事件，并更新到下载列表中
+ * 监听所有应用的安装进度事件，并更新到安装队列 Store 中
+ *
+ * 注意：此 Hook 应该在应用根组件中调用一次，确保全局监听
  */
 import { useEffect } from 'react'
-import { onInstallProgress, onInstallCancelled } from '@/apis/invoke'
-import { useDownloadConfigStore } from '@/stores/appConfig'
+import { message } from 'antd'
+import { onInstallProgress } from '@/apis/invoke'
+import { useInstallQueueStore } from '@/stores/installQueue'
 import { useUpdatesStore } from '@/stores/updates'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 
 export const useGlobalInstallProgress = () => {
-  const { updateAppProgress, removeDownloadingApp } = useDownloadConfigStore()
-  const checkUpdates = useUpdatesStore(state => state.checkUpdates)
-  const checkingUpdates = useUpdatesStore(state => state.checking)
-  const removeUpdate = useUpdatesStore(state => state.removeUpdate)
-  const fetchInstalledApps = useInstalledAppsStore(state => state.fetchInstalledApps)
+  const { updateProgress, markSuccess, markFailed, currentTask } = useInstallQueueStore()
+  const checkUpdates = useUpdatesStore((state) => state.checkUpdates)
+  const checkingUpdates = useUpdatesStore((state) => state.checking)
+  const removeUpdate = useUpdatesStore((state) => state.removeUpdate)
+  const fetchInstalledApps = useInstalledAppsStore((state) => state.fetchInstalledApps)
 
   useEffect(() => {
     let unlistenProgress: (() => void) | null = null
-    let unlistenCancel: (() => void) | null = null
 
     const setupListener = async() => {
       // 监听安装进度
       unlistenProgress = await onInstallProgress((progress) => {
-        // 更新下载列表中对应 App 的进度
-        updateAppProgress(progress.appId, progress.percentage, progress.status)
+        console.info('[useGlobalInstallProgress] Progress received:', progress)
 
-        // 安装/更新完成后立即从待更新列表移除，并刷新列表/安装信息
+        // 更新队列中对应任务的进度
+        updateProgress(progress.appId, progress.percentage, progress.status)
+
+        // 检查是否安装完成
         if (progress.percentage >= 100 || progress.status.includes('安装完成')) {
+          console.info(`[useGlobalInstallProgress] Install completed for: ${progress.appId}`)
+
+          // 标记任务成功
+          markSuccess(progress.appId)
+
+          // 显示成功消息
+          const appName = currentTask?.appInfo?.zhName || currentTask?.appInfo?.name || progress.appId
+          message.success({
+            content: `${appName} 安装成功！`,
+            key: `install-success-${progress.appId}`,
+          })
+
+          // 从待更新列表移除
           removeUpdate(progress.appId)
+
+          // 后台刷新已安装列表和更新列表
+          if (!checkingUpdates) {
+            checkUpdates()
+          }
+          fetchInstalledApps().catch((err) =>
+            console.error('[useGlobalInstallProgress] Failed to refresh installed apps:', err),
+          )
         }
 
-        // 后台刷新更新列表（正在检查则跳过本次），确保数据最终一致
-        if ((progress.percentage >= 100 || progress.status.includes('安装完成')) && !checkingUpdates) {
-          checkUpdates()
-          fetchInstalledApps().catch(err => console.error('[useGlobalInstallProgress] Failed to refresh installed apps:', err))
+        // 检查是否安装失败
+        if (progress.progress === 'error' || progress.status.includes('失败')) {
+          console.error(`[useGlobalInstallProgress] Install failed for: ${progress.appId}`, progress.status)
+
+          // 标记任务失败
+          markFailed(progress.appId, progress.status)
+
+          // 显示失败消息
+          const appName = currentTask?.appInfo?.zhName || currentTask?.appInfo?.name || progress.appId
+          message.error({
+            content: `${appName} 安装失败：${progress.status}`,
+            key: `install-failed-${progress.appId}`,
+          })
         }
       })
 
-      // 监听安装取消事件
-      unlistenCancel = await onInstallCancelled((event) => {
-        // 从下载列表中移除该应用
-        removeDownloadingApp(event.appId)
-      })
+      console.info('[useGlobalInstallProgress] Listener setup complete')
     }
 
     setupListener()
@@ -49,11 +79,10 @@ export const useGlobalInstallProgress = () => {
     // 组件卸载时清理监听器
     return () => {
       if (unlistenProgress) {
+        console.info('[useGlobalInstallProgress] Cleaning up listener')
         unlistenProgress()
       }
-      if (unlistenCancel) {
-        unlistenCancel()
-      }
     }
-  }, [updateAppProgress, removeDownloadingApp, checkUpdates, checkingUpdates, removeUpdate, fetchInstalledApps])
+  }, [updateProgress, markSuccess, markFailed, currentTask, checkUpdates, checkingUpdates, removeUpdate, fetchInstalledApps])
 }
+

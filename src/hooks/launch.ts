@@ -5,6 +5,7 @@
  * - 加载已安装应用列表
  * - 检查应用更新信息
  * - 初始化配置
+ * - 恢复中断的安装任务
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -12,6 +13,7 @@ import { arch } from '@tauri-apps/plugin-os'
 import { useGlobalStore } from '@/stores/global'
 import { useConfigStore } from '@/stores/appConfig'
 import { useInstalledAppsStore } from '@/stores/installedApps'
+import { useInstallQueueStore } from '@/stores/installQueue'
 import { useUpdateStore } from './useUploadStore'
 import { app } from '@tauri-apps/api'
 
@@ -38,7 +40,10 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   const { showBaseService, checkVersion } = useConfigStore()
 
   // 已安装应用状态
-  const { fetchInstalledApps, updateAppDetails } = useInstalledAppsStore()
+  const { fetchInstalledApps, updateAppDetails, installedApps } = useInstalledAppsStore()
+
+  // 安装队列状态
+  const { checkRecovery } = useInstallQueueStore()
 
   // 更新检测状态
   const { checking: checkingUpdate, hasUpdate, updateInfo, checkForUpdate } = useUpdateStore()
@@ -109,6 +114,20 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   }, [checkVersion, checkForUpdate])
 
   /**
+   * 步骤5: 恢复中断的安装任务
+   * 检查上次启动时是否有未完成的安装任务
+   */
+  const recoverInstallTask = useCallback((apps: API.INVOKE.InstalledApp[]) => {
+    try {
+      console.info('[launch] Checking for interrupted install task...')
+      checkRecovery(apps)
+    } catch (err) {
+      // 恢复检查失败不阻断初始化
+      console.warn('恢复安装任务检查失败:', err)
+    }
+  }, [checkRecovery])
+
+  /**
    * 执行完整的初始化流程
    */
   const initialize = useCallback(async() => {
@@ -139,6 +158,11 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
       // 步骤5: 检查商店版本（可选）
       setCurrentStep('检查商店版本')
       await checkStoreVersion(version)
+      setProgress(90)
+
+      // 步骤6: 恢复中断的安装任务
+      setCurrentStep('检查安装任务')
+      recoverInstallTask(installedApps)
       setProgress(100)
 
       onInited()
@@ -154,6 +178,8 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
     loadInstalledApps,
     loadInstalledAppsDetail,
     checkStoreVersion,
+    recoverInstallTask,
+    installedApps,
     onInited,
   ])
 

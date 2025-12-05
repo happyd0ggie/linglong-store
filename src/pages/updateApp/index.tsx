@@ -1,11 +1,11 @@
 import { Spin, Empty, Button, message } from 'antd'
-import { useState, useCallback, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ReloadOutlined } from '@ant-design/icons'
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useCheckUpdates, type UpdateInfo } from '@/hooks/useCheckUpdates'
-import { installApp } from '@/apis/invoke'
-import { useDownloadConfigStore } from '@/stores/appConfig'
+import { useAppInstall } from '@/hooks/useAppInstall'
+import { useInstallQueueStore } from '@/stores/installQueue'
 
 // ==================== 类型定义 ====================
 
@@ -35,91 +35,72 @@ const mapUpdateInfoToCardOptions = (info: UpdateInfo): AppCardInfo => ({
   zhName: info.zhName || info.name,
 })
 
+/**
+ * 将 UpdateInfo 转换为 AppMainDto 格式（用于安装队列）
+ */
+const mapUpdateInfoToAppDto = (info: UpdateInfo): API.APP.AppMainDto => ({
+  appId: info.appId,
+  name: info.name,
+  zhName: info.zhName,
+  icon: info.icon,
+  version: info.version,
+  description: info.description,
+  arch: info.arch,
+})
+
 // ==================== 组件 ====================
 
 const UpdateApp = () => {
   const { loading: checking, updates, checkUpdates } = useCheckUpdates()
-  const { addAppToDownloadList, downloadList } = useDownloadConfigStore()
+  const { handleBatchInstall, isAppInQueue } = useAppInstall()
+  const { queue, currentTask, isProcessing } = useInstallQueueStore()
 
-  const [updatingAll, setUpdatingAll] = useState(false)
-
-  // 获取正在下载/更新中的应用ID集合
+  // 获取正在安装/队列中的应用ID集合
   const installingAppIds = useMemo(() => {
-    const downloadingApps = downloadList.filter(app => app.flag === 'downloading')
-    return new Set(downloadingApps.map(app => app.appId).filter(Boolean) as string[])
-  }, [downloadList])
+    const ids = new Set<string>()
 
-  /**
-   * 更新单个应用
-   * 将应用添加到下载列表并调用安装接口
-   */
-  const handleUpdateApp = useCallback(async(app: UpdateInfo) => {
-    if (installingAppIds.has(app.appId)) {
-      message.warning(`${app.zhName || app.name} 正在更新中`)
-      return
+    // 当前正在安装的
+    if (currentTask?.appId) {
+      ids.add(currentTask.appId)
     }
 
-    try {
-      // 添加到下载列表，显示进度
-      addAppToDownloadList({
-        appId: app.appId,
-        name: app.name,
-        zhName: app.zhName,
-        icon: app.icon,
-        version: app.version,
-        description: app.description,
-        arch: app.arch,
-        flag: 'downloading',
-        percentage: 0,
-        installStatus: '准备更新...',
-      })
+    // 队列中等待的
+    queue.forEach((task) => {
+      if (task.appId) {
+        ids.add(task.appId)
+      }
+    })
 
-      // 调用安装接口，传入新版本号
-      await installApp(app.appId, app.version)
-      message.success({ content: `${app.zhName || app.name} 更新请求已提交`, key: app.appId })
-
-    } catch (error) {
-      console.error(`[UpdateApp] Failed to update ${app.appId}:`, error)
-      message.error({ content: `${app.zhName || app.name} 更新失败`, key: app.appId })
-    }
-  }, [installingAppIds, addAppToDownloadList])
+    return ids
+  }, [currentTask, queue])
 
   /**
    * 一键更新所有应用
-   * 串行提交更新请求，避免瞬间并发过高
+   * 批量加入安装队列，串行执行
    */
-  const handleUpdateAll = useCallback(async() => {
+  const handleUpdateAll = useCallback(() => {
     if (updates.length === 0) {
       return
     }
 
-    setUpdatingAll(true)
-    message.loading({ content: '正在提交更新请求...', key: 'update-all' })
+    // 过滤掉已在队列中的应用
+    const appsToUpdate = updates.filter((app) => !isAppInQueue(app.appId))
 
-    let successCount = 0
-    let failCount = 0
-
-    // 串行提交更新请求
-    for (const app of updates) {
-      if (!installingAppIds.has(app.appId)) {
-        try {
-          await handleUpdateApp(app)
-          successCount++
-        } catch {
-          failCount++
-        }
-      }
+    if (appsToUpdate.length === 0) {
+      message.warning('所有应用都已在更新队列中')
+      return
     }
 
-    setUpdatingAll(false)
+    // 构建批量安装任务
+    const tasks = appsToUpdate.map((app) => ({
+      appInfo: mapUpdateInfoToAppDto(app),
+      version: app.version,
+      force: false,
+    }))
 
-    // 显示结果汇总
-    if (failCount === 0) {
-      message.success({ content: `已提交 ${successCount} 个应用的更新请求`, key: 'update-all' })
-    } else {
-      message.warning({ content: `成功 ${successCount} 个，失败 ${failCount} 个`, key: 'update-all' })
-    }
-  }, [updates, installingAppIds, handleUpdateApp])
+    // 批量入队
+    handleBatchInstall(tasks)
+  }, [updates, isAppInQueue, handleBatchInstall])
 
   /**
    * 手动检查更新
@@ -130,7 +111,7 @@ const UpdateApp = () => {
   }, [checkUpdates])
 
   // 是否禁用一键更新按钮
-  const isUpdateAllDisabled = updatingAll || installingAppIds.size > 0 || updates.length === 0
+  const isUpdateAllDisabled = isProcessing || installingAppIds.size > 0 || updates.length === 0
 
   return (
     <div className={styles.container}>
@@ -166,7 +147,7 @@ const UpdateApp = () => {
                 size="large"
                 shape="round"
                 onClick={handleUpdateAll}
-                loading={updatingAll}
+                loading={isProcessing}
                 disabled={isUpdateAllDisabled}
               >
                 一键更新 ({updates.length})

@@ -7,7 +7,7 @@ import DefaultIcon from '@/assets/linyaps.svg'
 import { uninstallApp, runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useUpdatesStore } from '@/stores/updates'
-import { useDownloadConfigStore } from '@/stores/appConfig'
+import { useInstallQueueStore } from '@/stores/installQueue'
 import { useAppInstall } from '@/hooks/useAppInstall'
 import { compareVersions } from '@/util/checkVersion'
 
@@ -32,11 +32,11 @@ const ApplicationCard = ({
   const [buttonLoading, setButtonLoading] = useState(false)
   const [cardLoading, setCardLoading] = useState(false)
 
-  const { handleInstall } = useAppInstall()
+  const { handleInstall, isAppInQueue } = useAppInstall()
 
   const { installedApps, removeApp } = useInstalledAppsStore()
   const updates = useUpdatesStore(state => state.updates)
-  const downloadList = useDownloadConfigStore(state => state.downloadList)
+  const { currentTask, queue } = useInstallQueueStore()
 
   useEffect(() => {
     if (appInfo && appInfo.appId && !appInfo.appId.startsWith('empty-')) {
@@ -82,26 +82,19 @@ const ApplicationCard = ({
     return OPERATE_LIST[resolvedOperateId] || OPERATE_LIST[OperateType.INSTALL]
   }, [resolvedOperateId])
 
-  // 监听全局下载列表，保持按钮 loading 与实际安装/更新进度同步
+  // 监听安装队列，保持按钮 loading 与实际安装/更新进度同步
   useEffect(() => {
     if (!appInfo?.appId) {
       return
     }
-    const target = downloadList.find(app => app.appId === appInfo.appId)
 
-    if (!target) {
-      if (resolvedOperateId === OperateType.INSTALL || resolvedOperateId === OperateType.UPDATE) {
-        setButtonLoading(false)
-      }
-      return
-    }
+    // 检查当前应用是否在队列中或正在安装
+    const isInQueue = isAppInQueue(appInfo.appId)
 
-    if (target.flag === 'downloading') {
-      setButtonLoading(true)
-    } else {
-      setButtonLoading(false)
+    if (resolvedOperateId === OperateType.INSTALL || resolvedOperateId === OperateType.UPDATE) {
+      setButtonLoading(isInQueue)
     }
-  }, [appInfo?.appId, downloadList, resolvedOperateId])
+  }, [appInfo?.appId, currentTask, queue, resolvedOperateId, isAppInQueue])
 
   // 获取图标 URL
   const iconUrl = useMemo(() => {
