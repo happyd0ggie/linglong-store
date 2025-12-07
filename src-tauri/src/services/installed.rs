@@ -174,7 +174,7 @@ pub async fn uninstall_linglong_app(app_id: String, version: String) -> Result<S
 pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, String> {
     println!("[search_app_versions] Searching for installed versions of app_id: {}", app_id);
 
-    // 使用 ll-cli list 获取所有已安装的应用，而不是
+    // 使用 ll-cli list 获取所有已安装的应用
     let output = ll_cli_command()
         .arg("list")
         .arg("--json")

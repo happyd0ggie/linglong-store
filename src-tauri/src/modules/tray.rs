@@ -1,8 +1,12 @@
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     AppHandle, Manager,
 };
+
+// 编译时嵌入托盘图标资源，确保路径正确且无需运行时加载文件
+const TRAY_ICON: &[u8] = include_bytes!("../../icons/icon.png");
 
 /// 设置系统托盘
 /// 
@@ -44,7 +48,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
             }
         })
         // 设置托盘图标
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(Image::from_bytes(TRAY_ICON).expect("Failed to load tray icon"))
         // 构建托盘图标
         .build(app)?;
     
