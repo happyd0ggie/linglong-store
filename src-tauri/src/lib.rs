@@ -1,5 +1,6 @@
 mod services;
 
+use log::LevelFilter;
 use services::network::{get_network_speed as network_get_speed, NetworkSpeed};
 use services::process::{get_running_linglong_apps as process_get_running_apps, kill_linglong_app as process_kill_app, LinglongAppInfo};
 use services::installed::{
@@ -12,6 +13,7 @@ use services::installed::{
 };
 use services::linglong::{search_remote_app, get_ll_cli_version, SearchResultItem};
 pub mod modules;
+use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -71,15 +73,30 @@ async fn install_app(
     version: Option<String>,
     force: bool
 ) -> Result<String, String> {
-    println!("[install_app] Command invoked: app_id={}, version={:?}, force={}", app_id, version, force);
+    log::info!("[install_app] Command invoked: app_id={}, version={:?}, force={}", app_id, version, force);
     let result = install_linglong_app(app_handle, app_id.clone(), version, force).await;
-    println!("[install_app] Command result for {}: {:?}", app_id, result);
+    log::info!("[install_app] Command result for {}: {:?}", app_id, result);
     result
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(LevelFilter::Info)
+                .max_file_size(10 * 1024 * 1024) // 10 MB
+                // 保留所有日志文件以便于调试，不删除旧文件，最大存储10MB
+                .rotation_strategy(RotationStrategy::KeepAll)
+                .targets([
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("linglong-store".to_string()),
+                    }),
+                    Target::new(TargetKind::Webview),
+                    Target::new(TargetKind::Stdout),
+                ])
+                .build(),
+        )
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_zustand::init())

@@ -1,3 +1,4 @@
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -128,19 +129,19 @@ async fn is_app_running(app_id: &str) -> Result<bool, String> {
 }
 /// 卸载指定的玲珑应用
 pub async fn uninstall_linglong_app(app_id: String, version: String) -> Result<String, String> {
-    println!("[uninstall_linglong_app] Checking and stopping app before uninstall: {}", app_id);
+    info!("[uninstall_linglong_app] Checking and stopping app before uninstall: {}", app_id);
 
     // 尝试停止运行中的应用，最多 5 次，间隔 1 秒
     for attempt in 1..=5 {
         let running = is_app_running(&app_id).await?;
         if !running {
-            println!("[uninstall_linglong_app] App not running, proceed to uninstall: {}", app_id);
+            info!("[uninstall_linglong_app] App not running, proceed to uninstall: {}", app_id);
             break;
         }
 
-        println!("[uninstall_linglong_app] App is running, attempt {} to kill: {}", attempt, app_id);
+        info!("[uninstall_linglong_app] App is running, attempt {} to kill: {}", attempt, app_id);
         if let Err(err) = kill_linglong_app(app_id.clone()).await {
-            println!("[uninstall_linglong_app] kill attempt {} failed for {}: {}", attempt, app_id, err);
+            warn!("[uninstall_linglong_app] kill attempt {} failed for {}: {}", attempt, app_id, err);
         }
 
         if attempt == 5 {
@@ -148,7 +149,7 @@ pub async fn uninstall_linglong_app(app_id: String, version: String) -> Result<S
             let still_running = is_app_running(&app_id).await.unwrap_or(true);
             if still_running {
                 let err_msg = "卸载失败，请先停止应用运行。".to_string();
-                println!("[uninstall_linglong_app] {}", err_msg);
+                warn!("[uninstall_linglong_app] {}", err_msg);
                 return Err(err_msg);
             }
             break;
@@ -172,7 +173,7 @@ pub async fn uninstall_linglong_app(app_id: String, version: String) -> Result<S
 }
 /// 搜索指定appId的所有已安装版本
 pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, String> {
-    println!("[search_app_versions] Searching for installed versions of app_id: {}", app_id);
+    info!("[search_app_versions] Searching for installed versions of app_id: {}", app_id);
 
     // 使用 ll-cli list 获取所有已安装的应用
     let output = ll_cli_command()
@@ -182,33 +183,33 @@ pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, St
         .output()
         .map_err(|e| {
             let err_msg = format!("Failed to execute 'll-cli list': {}", e);
-            println!("[search_app_versions] Error: {}", err_msg);
+            error!("[search_app_versions] Error: {}", err_msg);
             err_msg
         })?;
     if !output.status.success() {
         let error_msg = String::from_utf8_lossy(&output.stderr);
         let err = format!("ll-cli list command failed: {}", error_msg);
-        println!("[search_app_versions] {}", err);
+        error!("[search_app_versions] {}", err);
         return Err(err);
     }
     let output_string = String::from_utf8_lossy(&output.stdout);
     let trimmed = output_string.trim();
 
-    println!("[search_app_versions] Output length: {} bytes", trimmed.len());
+    info!("[search_app_versions] Output length: {} bytes", trimmed.len());
 
     if trimmed.is_empty() {
-        println!("[search_app_versions] Empty output, returning empty vec");
+        warn!("[search_app_versions] Empty output, returning empty vec");
         return Ok(Vec::new());
     }
     // 解析 JSON 输出
     let list_items: Vec<LLCliListItem> = serde_json::from_str(trimmed)
         .map_err(|e| {
             let err_msg = format!("Failed to parse ll-cli list output: {}", e);
-            println!("[search_app_versions] Parse error: {}", err_msg);
+            error!("[search_app_versions] Parse error: {}", err_msg);
             err_msg
         })?;
 
-    println!("[search_app_versions] Found {} installed items", list_items.len());
+    info!("[search_app_versions] Found {} installed items", list_items.len());
 
     // 过滤出指定 app_id 的所有版本
     let apps: Vec<InstalledApp> = list_items
@@ -218,9 +219,11 @@ pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, St
             let matches = item.app_id.as_ref().map_or(false, |id| id == &app_id)
                 || item.name == app_id;
             if matches {
-                println!("[search_app_versions] Found matching app: {} ({})",
-                         item.name,
-                         item.app_id.as_ref().unwrap_or(&item.name));
+                info!(
+                    "[search_app_versions] Found matching app: {} ({})",
+                    item.name,
+                    item.app_id.as_ref().unwrap_or(&item.name)
+                );
             }
             matches
         })
@@ -253,13 +256,15 @@ pub async fn search_app_versions(app_id: String) -> Result<Vec<InstalledApp>, St
                 runtime: item.runtime.unwrap_or_default(),
                 size,
                 repo_name: "stable".to_string(),
-            }
+    }
         })
         .collect();
-    println!("[search_app_versions] Found {} installed versions for app_id: {}", apps.len(), app_id);
+    info!("[search_app_versions] Found {} installed versions for app_id: {}", apps.len(), app_id);
     for app in &apps {
-        println!("[search_app_versions] - {} version: {}, channel: {}, module: {}",
-                 app.app_id, app.version, app.channel, app.module);
+        info!(
+            "[search_app_versions] - {} version: {}, channel: {}, module: {}",
+            app.app_id, app.version, app.channel, app.module
+        );
     }
     Ok(apps)
 }
@@ -268,16 +273,13 @@ pub async fn run_linglong_app(app_id: String) -> Result<String, String> {
     // 根据 ll-cli 文档，run 命令只需要应用名，不需要版本号
     // 示例：ll-cli run org.deepin.calculator
 
-    println!("[run_linglong_app] Starting app: {}", app_id);
-    println!("[run_linglong_app] Command: ll-cli run {}", app_id);
+    info!("[run_linglong_app] Starting app: {}", app_id);
+    info!("[run_linglong_app] Command: ll-cli run {}", app_id);
 
     // 在后台线程中启动命令，不等待退出
     let app_id_bg = app_id.clone();
     std::thread::spawn(move || {
-        println!(
-            "[run_linglong_app][bg] Spawning ll-cli run {}",
-            app_id_bg
-        );
+        info!("[run_linglong_app][bg] Spawning ll-cli run {}", app_id_bg);
         let mut cmd = ll_cli_command();
         let spawn_result = cmd
             .arg("run")
@@ -289,14 +291,14 @@ pub async fn run_linglong_app(app_id: String) -> Result<String, String> {
         match spawn_result
         {
             Ok(child) => {
-                println!(
+                info!(
                     "[run_linglong_app][bg] Process spawned with PID: {:?}",
                     child.id()
                 );
                 // 不 wait，线程结束后让子进程自行运行
             }
             Err(e) => {
-                println!(
+                error!(
                     "[run_linglong_app][bg] Failed to execute 'll-cli run' for {}: {}",
                     app_id_bg, e
                 );
@@ -328,10 +330,10 @@ pub async fn install_linglong_app(
         version: Option<String>,
         force: bool,
 ) -> Result<String, String> {
-        println!("========== [install_linglong_app] START ==========");
-    println!("[install_linglong_app] app_id: {}", app_id);
-    println!("[install_linglong_app] version: {:?}", version);
-    println!("[install_linglong_app] force: {}", force);
+    info!("========== [install_linglong_app] START ==========");
+    info!("[install_linglong_app] app_id: {}", app_id);
+    info!("[install_linglong_app] version: {:?}", version);
+    info!("[install_linglong_app] force: {}", force);
 
     // 构建应用引用
     let app_ref = if let Some(ver) = version.as_ref() {
@@ -354,7 +356,7 @@ pub async fn install_linglong_app(
         })
         .map_err(|e| {
                 let err_msg = format!("Failed to create PTY: {}", e);
-            println!("[install_linglong_app] ERROR: {}", err_msg);
+            error!("[install_linglong_app] ERROR: {}", err_msg);
             err_msg
         })?;
 
@@ -373,16 +375,16 @@ pub async fn install_linglong_app(
         app_ref,
         if force { " --force" } else { "" }
     );
-    println!("[install_linglong_app] Executing command: {}", command_str);
+    info!("[install_linglong_app] Executing command: {}", command_str);
 
     // 在 PTY 中启动命令
     let child = pty_pair.slave.spawn_command(cmd).map_err(|e| {
             let err_msg = format!("Failed to spawn command in PTY: {}", e);
-        println!("[install_linglong_app] ERROR: {}", err_msg);
+        error!("[install_linglong_app] ERROR: {}", err_msg);
         err_msg
     })?;
 
-    println!("[install_linglong_app] Process spawned in PTY successfully");
+    info!("[install_linglong_app] Process spawned in PTY successfully");
 
     let force_hint_detected = Arc::new(AtomicBool::new(false));
     let force_hint_message = Arc::new(Mutex::new(None::<String>));
@@ -398,16 +400,16 @@ pub async fn install_linglong_app(
                 format!("Failed to lock process manager: {}", e)
         })?;
 
-        println!("[install_linglong_app] About to store process with app_id: '{}'", app_id);
-        println!("[install_linglong_app] Current processes before insert: {}", processes.len());
+        info!("[install_linglong_app] About to store process with app_id: '{}'", app_id);
+        info!("[install_linglong_app] Current processes before insert: {}", processes.len());
 
         processes.insert(app_id.clone(), child_arc.clone());
 
-        println!("[install_linglong_app] Process stored successfully");
-        println!("[install_linglong_app] Current processes after insert: {}", processes.len());
-        println!("[install_linglong_app] All stored app_ids:");
+        info!("[install_linglong_app] Process stored successfully");
+        info!("[install_linglong_app] Current processes after insert: {}", processes.len());
+        info!("[install_linglong_app] All stored app_ids:");
         for key in processes.keys() {
-                println!("[install_linglong_app]   - '{}'", key);
+                info!("[install_linglong_app]   - '{}'", key);
         }
     }
 
@@ -417,17 +419,17 @@ pub async fn install_linglong_app(
         .try_clone_reader()
         .map_err(|e| {
                 let err_msg = format!("Failed to clone PTY reader: {}", e);
-            println!("[install_linglong_app] ERROR: {}", err_msg);
+            error!("[install_linglong_app] ERROR: {}", err_msg);
             err_msg
         })?;
 
-    println!("[install_linglong_app] Starting to read PTY output...");
-    println!("==========================================================");
+    info!("[install_linglong_app] Starting to read PTY output...");
+    info!("==========================================================");
 
     let pty_writer = match pty_pair.master.take_writer() {
         Ok(writer) => Some(Arc::new(Mutex::new(writer))),
         Err(e) => {
-            println!("[install_linglong_app] WARN: Failed to take PTY writer: {}", e);
+            warn!("[install_linglong_app] WARN: Failed to take PTY writer: {}", e);
             None
         }
     };
@@ -476,11 +478,11 @@ pub async fn install_linglong_app(
                 if let Some(writer) = &pty_writer_reader {
                     if let Ok(mut guard) = writer.lock() {
                         if let Err(e) = guard.write_all(b"Yes\n") {
-                            println!("[PTY Writer] WARN: failed to write auto confirm: {}", e);
+                            warn!("[PTY Writer] WARN: failed to write auto confirm: {}", e);
                         } else if let Err(e) = guard.flush() {
-                            println!("[PTY Writer] WARN: failed to flush auto confirm: {}", e);
+                            warn!("[PTY Writer] WARN: failed to flush auto confirm: {}", e);
                         } else {
-                            println!("[PTY Writer] Auto-confirmed prompt with 'Yes'");
+                            info!("[PTY Writer] Auto-confirmed prompt with 'Yes'");
                             auto_confirm_sent_reader.store(true, Ordering::Relaxed);
                         }
                     }
@@ -491,7 +493,7 @@ pub async fn install_linglong_app(
         loop {
                 match reader.read(&mut buffer) {
                     Ok(0) => {
-                        println!("[PTY Reader] EOF reached");
+                        info!("[PTY Reader] EOF reached");
                     break;
                 }
                 Ok(n) => {
@@ -513,13 +515,13 @@ pub async fn install_linglong_app(
                                 if let Ok(mut auth_guard) = auth_wait_start_reader.lock() {
                                     if progress_info.status == "等待授权" {
                                         if auth_guard.is_none() {
-                                            println!("[PTY] Detected auth request, starting timer");
+                                            info!("[PTY] Detected auth request, starting timer");
                                             *auth_guard = Some(Instant::now());
                                         }
                                     } else if !progress_info.status.is_empty() && progress_info.status != "正在处理" {
                                         // 如果状态变了（且不是默认的正在处理），清除计时器
                                         if auth_guard.is_some() {
-                                            println!("[PTY] Auth state cleared, status: {}", progress_info.status);
+                                            info!("[PTY] Auth state cleared, status: {}", progress_info.status);
                                             *auth_guard = None;
                                         }
                                     }
@@ -528,13 +530,13 @@ pub async fn install_linglong_app(
                                 // 只有当百分比变化时才发送事件，避免大量重复更新
                                 // 或者当状态为"安装失败"时，强制发送
                                 if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
-                                    println!("[PTY] Progress changed or error detected: {}% -> {}%, status: {}", last_percentage, progress_info.percentage, progress_info.status);
+                                    info!("[PTY] Progress changed or error detected: {}% -> {}%, status: {}", last_percentage, progress_info.percentage, progress_info.status);
                                     if progress_info.percentage != last_percentage {
                                         last_percentage = progress_info.percentage;
                                     }
 
                                     if let Err(e) = app_handle_clone.emit("install-progress", &progress_info) {
-                                        println!("[PTY Reader] WARN: Failed to emit progress: {}", e);
+                                        warn!("[PTY Reader] WARN: Failed to emit progress: {}", e);
                                     }
                                 }
                             }
@@ -549,19 +551,19 @@ pub async fn install_linglong_app(
                             if let Ok(mut auth_guard) = auth_wait_start_reader.lock() {
                                 if progress_info.status == "等待授权" {
                                     if auth_guard.is_none() {
-                                        println!("[PTY] Detected auth request (partial), starting timer");
+                                        info!("[PTY] Detected auth request (partial), starting timer");
                                         *auth_guard = Some(Instant::now());
                                     }
                                 } else if !progress_info.status.is_empty() && progress_info.status != "正在处理" {
                                     if auth_guard.is_some() {
-                                        println!("[PTY] Auth state cleared (partial), status: {}", progress_info.status);
+                                        info!("[PTY] Auth state cleared (partial), status: {}", progress_info.status);
                                         *auth_guard = None;
                                     }
                                 }
                             }
 
                             if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
-                                println!("[PTY] Progress changed (partial): {}% -> {}%", last_percentage, progress_info.percentage);
+                                info!("[PTY] Progress changed (partial): {}% -> {}%", last_percentage, progress_info.percentage);
                                 if progress_info.percentage != last_percentage {
                                     last_percentage = progress_info.percentage;
                                 }
@@ -571,7 +573,7 @@ pub async fn install_linglong_app(
                     }
                 }
                 Err(e) => {
-                        println!("[PTY Reader] Error reading: {}", e);
+                        error!("[PTY Reader] Error reading: {}", e);
                     break;
                 }
             }
@@ -581,16 +583,16 @@ pub async fn install_linglong_app(
         if !line_buffer.trim().is_empty() {
                 record_cli_output(&line_buffer);
                 if line_buffer.contains('%') {
-                    println!("[PTY Final] Processing remaining buffer");
+                    info!("[PTY Final] Processing remaining buffer");
                 let progress_info = parse_install_progress(&line_buffer, &app_id_clone);
                 let _ = app_handle_clone.emit("install-progress", &progress_info);
             }
         }
 
-        println!("[PTY Reader] Finished reading output");
+        info!("[PTY Reader] Finished reading output");
     });
 
-    println!("[install_linglong_app] Waiting for process to complete...");
+    info!("[install_linglong_app] Waiting for process to complete...");
 
     // 使用轮询方式等待进程结束，避免长时间持有锁导致 cancel 无法工作
     let exit_status = loop {
@@ -602,7 +604,7 @@ pub async fn install_linglong_app(
             // 使用 try_wait() 非阻塞检查进程状态
             match child.try_wait() {
                     Ok(Some(status)) => {
-                        println!("[install_linglong_app] Process exited");
+                        info!("[install_linglong_app] Process exited");
                     Some(status)
                 }
                 Ok(None) => {
@@ -611,7 +613,7 @@ pub async fn install_linglong_app(
                 }
                 Err(e) => {
                         let err_msg = format!("Failed to check process status: {}", e);
-                    println!("[install_linglong_app] ERROR: {}", err_msg);
+                    error!("[install_linglong_app] ERROR: {}", err_msg);
                     return Err(err_msg);
                 }
             }
@@ -622,7 +624,7 @@ pub async fn install_linglong_app(
             if let Ok(auth_guard) = auth_wait_start.lock() {
                 if let Some(start_time) = *auth_guard {
                     if start_time.elapsed().as_secs() > 60 {
-                        println!("[install_linglong_app] Authorization timed out (>60s). Killing process...");
+                        warn!("[install_linglong_app] Authorization timed out (>60s). Killing process...");
                         
                         // 尝试终止进程
                         if let Ok(mut child) = child_arc.lock() {
@@ -657,14 +659,14 @@ pub async fn install_linglong_app(
                 format!("Failed to lock process manager: {}", e)
         })?;
         processes.remove(&app_id);
-        println!("[install_linglong_app] Process removed from manager for app: {}", app_id);
+        info!("[install_linglong_app] Process removed from manager for app: {}", app_id);
     }
 
     // 等待读取线程完成
     let _ = reader_handle.join();
 
-    println!("==========================================================");
-    println!("[install_linglong_app] Process exited with status: {:?}", exit_status);
+    info!("==========================================================");
+    info!("[install_linglong_app] Process exited with status: {:?}", exit_status);
     let get_force_hint_message = || -> String {
             let fallback = format!(
                 "ll-cli install {}/version --force",
@@ -686,7 +688,7 @@ pub async fn install_linglong_app(
             }
         }
 
-        println!("[install_linglong_app] ERROR: {}", failure_message);
+        error!("[install_linglong_app] ERROR: {}", failure_message);
 
         // Determine status message based on failure reason
         let status_msg = if failure_message.contains("Request dismissed") 
@@ -713,7 +715,7 @@ pub async fn install_linglong_app(
     }
     if !force && force_hint_detected.load(Ordering::Relaxed) {
             let failure_message = get_force_hint_message();
-            println!("[install_linglong_app] FORCE HINT DETECTED WITHOUT FORCE FLAG: {}", failure_message);
+            warn!("[install_linglong_app] FORCE HINT DETECTED WITHOUT FORCE FLAG: {}", failure_message);
         let _ = app_handle.emit("install-progress", &InstallProgress {
                 app_id: app_id.clone(),
                 progress: "error".to_string(),
@@ -728,7 +730,7 @@ pub async fn install_linglong_app(
             format!("Successfully installed {}", app_id)
     };
 
-    println!("[install_linglong_app] SUCCESS: {}", success_msg);
+    info!("[install_linglong_app] SUCCESS: {}", success_msg);
 
     // 发送完成事件
     let _ = app_handle.emit("install-progress", &InstallProgress {
@@ -738,15 +740,15 @@ pub async fn install_linglong_app(
         status: "安装完成".to_string(),
     });
 
-    println!("========== [install_linglong_app] END ==========");
+    info!("========== [install_linglong_app] END ==========");
     Ok(success_msg)
 }
 /// 解析安装进度字符串
 /// 处理 PTY 输出中的 \r 字符（用于在同一行更新进度条）
 /// 示例输入包含多个 \r 分隔的进度更新
 fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("[parse_install_progress] Original line length: {} bytes", line.len());
+        info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    info!("[parse_install_progress] Original line length: {} bytes", line.len());
 
     // 移除 ANSI 控制字符
     let cleaned = line
@@ -766,8 +768,8 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
         .map(|s| s.trim())
         .unwrap_or("");
 
-    println!("[parse_install_progress] Total progress updates in line: {}", parts.len());
-    println!("[parse_install_progress] Latest progress: {:?}", latest_progress);
+    info!("[parse_install_progress] Total progress updates in line: {}", parts.len());
+    info!("[parse_install_progress] ll-cli output: {:?}", latest_progress);
 
     // 从最新的进度文本中提取百分比
     let percentage = if let Some(percent_pos) = latest_progress.rfind('%') {
@@ -786,10 +788,10 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
         let percent_value = digits.parse::<f64>()
             .map(|f| f as u32)
             .unwrap_or(0);
-        println!("[parse_install_progress] ✓ Parsed percentage: {}%", percent_value);
+        info!("[parse_install_progress] ✓ Parsed percentage: {}%", percent_value);
         percent_value
     } else {
-            println!("[parse_install_progress] ✗ No '%' found in latest progress");
+            warn!("[parse_install_progress] ✗ No '%' found in latest progress");
         0
     };
 
@@ -820,6 +822,8 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
             "安装失败".to_string()
     } else if latest_progress.to_lowercase().contains("error") || latest_progress.contains("错误") || latest_progress.to_lowercase().contains("failed") {
             "安装失败".to_string()
+    } else if latest_progress.to_lowercase().contains("package not found") {
+        "安装失败: 找不到App，请重试".to_string()
     } else if !latest_progress.is_empty() {
             // 截取前50个字符作为状态
             let status_text = if latest_progress.len() > 50 {
@@ -839,10 +843,10 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
             status: status.clone(),
     };
 
-    println!("[parse_install_progress] ═══ RESULT ═══");
-    println!("[parse_install_progress] percentage: {}%", result.percentage);
-    println!("[parse_install_progress] status: {}", result.status);
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    info!("[parse_install_progress] ═══ RESULT ═══");
+    info!("[parse_install_progress] percentage: {}%", result.percentage);
+    info!("[parse_install_progress] status: {}", result.status);
+    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     result
 }

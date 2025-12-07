@@ -4,6 +4,7 @@ use tauri::{
     tray::TrayIconBuilder,
     AppHandle, Manager,
 };
+use log::warn;
 
 // 编译时嵌入托盘图标资源，确保路径正确且无需运行时加载文件
 const TRAY_ICON: &[u8] = include_bytes!("../../icons/icon.png");
@@ -44,7 +45,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
                     window.show().expect("Failed to show window");
                 }
                 // 处理未知的菜单项
-                _ => println!("Unhandled menu item: {:?}", event.id),
+                _ => warn!("Unhandled menu item: {:?}", event.id),
             }
         })
         // 设置托盘图标
