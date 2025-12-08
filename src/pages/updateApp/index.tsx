@@ -3,50 +3,9 @@ import { useCallback, useMemo } from 'react'
 import { ReloadOutlined } from '@ant-design/icons'
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
-import { useCheckUpdates, type UpdateInfo } from '@/hooks/useCheckUpdates'
+import { useCheckUpdates } from '@/hooks/useCheckUpdates'
 import { useAppInstall } from '@/hooks/useAppInstall'
 import { useInstallQueueStore } from '@/stores/installQueue'
-
-// ==================== 类型定义 ====================
-
-/** 应用卡片展示信息 */
-interface AppCardInfo {
-  appId: string
-  name: string
-  version: string
-  description: string
-  icon: string
-  arch: string
-  zhName: string
-}
-
-// ==================== 辅助函数 ====================
-
-/**
- * 将 UpdateInfo 转换为 ApplicationCard 需要的格式
- */
-const mapUpdateInfoToCardOptions = (info: UpdateInfo): AppCardInfo => ({
-  appId: info.appId,
-  name: info.name,
-  version: info.version,
-  description: info.description,
-  icon: info.icon,
-  arch: info.arch,
-  zhName: info.zhName || info.name,
-})
-
-/**
- * 将 UpdateInfo 转换为 AppMainDto 格式（用于安装队列）
- */
-const mapUpdateInfoToAppDto = (info: UpdateInfo): API.APP.AppMainDto => ({
-  appId: info.appId,
-  name: info.name,
-  zhName: info.zhName,
-  icon: info.icon,
-  version: info.version,
-  description: info.description,
-  arch: info.arch,
-})
 
 // ==================== 组件 ====================
 
@@ -93,7 +52,7 @@ const UpdateApp = () => {
 
     // 构建批量安装任务
     const tasks = appsToUpdate.map((app) => ({
-      appInfo: mapUpdateInfoToAppDto(app),
+      appInfo: app,
       version: app.version,
       force: false,
     }))
@@ -135,7 +94,7 @@ const UpdateApp = () => {
                 <div key={app.appId} className={styles.cardWrapper}>
                   <ApplicationCard
                     operateId={4}
-                    appInfo={mapUpdateInfoToCardOptions(app)}
+                    appInfo={app}
                   />
                 </div>
               ))}

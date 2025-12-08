@@ -8,25 +8,9 @@ import { useGlobalStore } from './global'
 /**
  * 应用更新信息
  */
-export interface UpdateInfo {
-  /** 应用ID */
-  appId: string
-  /** 应用名称 */
-  name: string
-  /** 最新版本 */
-  version: string
+export interface UpdateInfo extends API.APP.AppMainDto {
   /** 当前已安装版本 */
   currentVersion: string
-  /** 应用描述 */
-  description: string
-  /** 应用图标 */
-  icon: string
-  /** 系统架构 */
-  arch: string
-  /** 分类名称 */
-  categoryName?: string
-  /** 中文名称 */
-  zhName?: string
 }
 
 /**
@@ -106,7 +90,7 @@ function mapRemoteUpdatesToStore(
       icon: remoteApp.icon || installedApp.icon,
       arch: remoteApp.arch || installedApp.arch,
       categoryName: remoteApp.categoryName || installedApp.categoryName,
-      zhName: remoteApp.zhName || installedApp.zhName,
+      zhName: remoteApp.zhName || installedApp.zhName || remoteApp.name || installedApp.name,
     })
   }
 
