@@ -822,7 +822,7 @@ fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
             "安装失败".to_string()
     } else if latest_progress.to_lowercase().contains("error") || latest_progress.contains("错误") || latest_progress.to_lowercase().contains("failed") {
             "安装失败".to_string()
-    } else if latest_progress.to_lowercase().contains("package not found") {
+    } else if latest_progress.to_lowercase().contains("package not found") || latest_progress.contains("no modules found") {
         "安装失败: 找不到App，请重试".to_string()
     } else if !latest_progress.is_empty() {
             // 截取前50个字符作为状态

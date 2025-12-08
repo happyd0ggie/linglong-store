@@ -58,6 +58,30 @@ declare namespace API {
             appScreenshotList?: AppScreenshot[]
         }
 
+        /**
+         * 检查更新请求参数
+         */
+        interface AppCheckVersionBO {
+            /** App包名 */
+            appId: string
+            /** 当前系统架构 */
+            arch: string
+            /** App当前版本 */
+            version: string
+        }
+
+        /**
+         * 应用详情 DTO (检查更新返回)
+         * 继承 AppMainDto 以复用大部分字段
+         */
+        interface AppMainDetailDTO extends AppMainDto {
+            base?: string
+            devId?: string
+            devName?: string
+            iconNoShow?: string
+            lan?: string
+        }
+
         interface AppScreenshot {
             /** 语言 */
             lan: string

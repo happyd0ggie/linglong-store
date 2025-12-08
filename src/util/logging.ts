@@ -5,7 +5,9 @@ let loggingInitialized = false
 
 // 初始化插件日志桥接并将浏览器控制台日志转发到 Rust 日志，仅执行一次。
 export async function setupLoggingBridge() {
-  if (loggingInitialized) return
+  if (loggingInitialized) {
+    return
+  }
   loggingInitialized = true
 
   try {
@@ -26,12 +28,16 @@ export async function setupLoggingBridge() {
       const containsPluginMarker = args.some(
         (arg) => typeof arg === 'string' && arg.includes('[webview::'),
       )
-      if (containsPluginMarker || isForwardingConsole) return
+      if (containsPluginMarker || isForwardingConsole) {
+        return
+      }
 
       isForwardingConsole = true
       const message = args
         .map((arg) => {
-          if (typeof arg === 'string') return arg
+          if (typeof arg === 'string') {
+            return arg
+          }
           try {
             return JSON.stringify(arg)
           } catch {
@@ -40,7 +46,9 @@ export async function setupLoggingBridge() {
         })
         .join(' ')
       logger(message)
-        .catch(() => {})
+        .catch(() => {
+          // ignore
+        })
         .finally(() => {
           isForwardingConsole = false
         })

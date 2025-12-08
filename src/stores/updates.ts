@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { getInstalledLinglongApps } from '@/apis/invoke'
-import { getAppDetail } from '@/apis/apps'
-import { compareVersions } from '@/util/checkVersion'
+import { appCheckUpdate } from '@/apis/apps'
 import { useGlobalStore } from './global'
 
 // ==================== 类型定义 ====================
@@ -61,97 +60,54 @@ let autoRefreshTimer: NodeJS.Timeout | null = null
 // ==================== 辅助函数 ====================
 
 /**
- * 构建批量查询参数
+ * 构建检查更新参数
  * @param installedApps 已安装的应用列表
  * @param arch 系统架构
  * @returns 查询参数数组
  */
-function buildAppDetailSearchParams(
+function buildCheckUpdateParams(
   installedApps: API.INVOKE.InstalledApp[],
   arch: string,
-): API.APP.AppDetailSearchBO[] {
+): API.APP.AppCheckVersionBO[] {
   return installedApps
     .filter(app => app.module !== 'devel')
     .map(app => ({
       appId: app.appId,
       arch,
+      version: app.version,
     }))
 }
 
 /**
- * 从远程版本列表中查找最新版本
- * @param versions 版本列表（已按版本号降序排列）
- * @returns 最新版本信息，如果列表为空则返回 null
- */
-function getLatestVersion(versions: API.APP.AppMainDto[]): API.APP.AppMainDto | null {
-  // 过滤掉 devel 模块，取第一个作为最新版本
-  const nonDevelVersions = versions.filter(v => v.module !== 'devel')
-  return nonDevelVersions.length > 0 ? nonDevelVersions[0] : null
-}
-
-/**
- * 比较并生成更新信息
- * @param installedApp 已安装的应用
- * @param latestVersion 远程最新版本
- * @returns 更新信息，如果无需更新则返回 null
- */
-function buildUpdateInfo(
-  installedApp: API.INVOKE.InstalledApp,
-  latestVersion: API.APP.AppMainDto,
-): UpdateInfo | null {
-  const latestVersionStr = latestVersion.version || ''
-  const currentVersionStr = installedApp.version
-
-  // 版本比较：最新版本 > 当前版本 才需要更新
-  if (compareVersions(latestVersionStr, currentVersionStr) !== 1) {
-    return null
-  }
-
-  return {
-    appId: installedApp.appId,
-    name: latestVersion.name || installedApp.name,
-    version: latestVersionStr,
-    currentVersion: currentVersionStr,
-    description: latestVersion.description || installedApp.description || '',
-    icon: latestVersion.icon || installedApp.icon,
-    arch: latestVersion.arch || installedApp.arch,
-    categoryName: latestVersion.categoryName || installedApp.categoryName,
-    zhName: latestVersion.zhName || installedApp.zhName,
-  }
-}
-
-/**
- * 处理远程版本数据，生成更新列表
+ * 将远程更新数据映射到 Store 格式
  * @param installedApps 已安装的应用列表
- * @param remoteData 远程版本数据 Map
- * @returns 需要更新的应用列表
+ * @param remoteUpdates 远程返回的有更新的应用列表
+ * @returns 更新信息列表
  */
-function processRemoteVersions(
+function mapRemoteUpdatesToStore(
   installedApps: API.INVOKE.InstalledApp[],
-  remoteData: Record<string, API.APP.AppMainDto[]>,
+  remoteUpdates: API.APP.AppMainDetailDTO[],
 ): UpdateInfo[] {
   const updateList: UpdateInfo[] = []
+  const installedMap = new Map(installedApps.map(app => [app.appId, app]))
 
-  for (const installedApp of installedApps) {
-    // 跳过 devel 模块的应用
-    if (installedApp.module === 'devel') {
+  for (const remoteApp of remoteUpdates) {
+    const installedApp = installedMap.get(remoteApp.appId || '')
+    if (!installedApp) {
       continue
     }
 
-    const versions = remoteData[installedApp.appId]
-    if (!versions || versions.length === 0) {
-      continue
-    }
-
-    const latestVersion = getLatestVersion(versions)
-    if (!latestVersion) {
-      continue
-    }
-
-    const updateInfo = buildUpdateInfo(installedApp, latestVersion)
-    if (updateInfo) {
-      updateList.push(updateInfo)
-    }
+    updateList.push({
+      appId: remoteApp.appId || installedApp.appId,
+      name: remoteApp.name || installedApp.name,
+      version: remoteApp.version || '',
+      currentVersion: installedApp.version,
+      description: remoteApp.description || installedApp.description || '',
+      icon: remoteApp.icon || installedApp.icon,
+      arch: remoteApp.arch || installedApp.arch,
+      categoryName: remoteApp.categoryName || installedApp.categoryName,
+      zhName: remoteApp.zhName || installedApp.zhName,
+    })
   }
 
   return updateList
@@ -196,7 +152,7 @@ export const useUpdatesStore = create<UpdatesStore>((set, get) => ({
       }
 
       // 3. 构建批量查询参数
-      const searchParams = buildAppDetailSearchParams(installedApps, arch)
+      const searchParams = buildCheckUpdateParams(installedApps, arch)
       if (searchParams.length === 0) {
         set({ updates: [], lastChecked: Date.now() })
         useGlobalStore.getState().getUpdateAppNum(0)
@@ -204,16 +160,16 @@ export const useUpdatesStore = create<UpdatesStore>((set, get) => ({
       }
 
       // 4. 批量查询远程版本信息
-      const response = await getAppDetail(searchParams)
+      const response = await appCheckUpdate(searchParams)
       if (!response.data) {
-        console.warn('[checkUpdates] No data returned from getAppDetail')
+        console.warn('[checkUpdates] No data returned from appCheckUpdate')
         set({ updates: [], lastChecked: Date.now() })
         useGlobalStore.getState().getUpdateAppNum(0)
         return
       }
 
       // 5. 处理远程数据，生成更新列表
-      const updateList = processRemoteVersions(installedApps, response.data)
+      const updateList = mapRemoteUpdatesToStore(installedApps, response.data)
 
       // 6. 更新状态
       set({ updates: updateList, lastChecked: Date.now() })

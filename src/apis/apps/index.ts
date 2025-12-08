@@ -54,6 +54,15 @@ export const getWelcomeAppList = (data: API.APP.AppMainVO) => {
 }
 
 /**
+ * 检查应用更新
+ * @param data 应用版本检查参数数组
+ * @returns 有更新的应用列表
+ */
+export const appCheckUpdate = (data: API.APP.AppCheckVersionBO[]) => {
+  return post<API.Common.BaseResponse<API.APP.AppMainDetailDTO[]>>('/app/appCheckUpdate', data)
+}
+
+/**
  * 获取最新应用列表(按上架时间排序)
  * @param data 查询参数(分页)
  * @returns 分页应用列表
