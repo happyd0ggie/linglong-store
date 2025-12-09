@@ -38,7 +38,7 @@ const AppDetail = () => {
 
   // 使用安装队列
   const { handleInstall, isAppInQueue, getInstallStatus } = useAppInstall()
-  const currentTask = useInstallQueueStore((state) => state.currentTask)
+  const { queue, currentTask } = useInstallQueueStore()
 
   // 获取当前应用的安装状态（从队列中）
   const appInstallStatus = useMemo(() => {
@@ -46,7 +46,7 @@ const AppDetail = () => {
       return null
     }
     return getInstallStatus(app.appId)
-  }, [app?.appId, getInstallStatus, currentTask])
+  }, [app?.appId, getInstallStatus, currentTask, queue])
 
   // 是否正在安装
   const isInstalling = useMemo(() => {

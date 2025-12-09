@@ -37,7 +37,7 @@ const TaskProgressIcon = ({
     <div className={styles.downloadIcon}>
       <Progress
         percent={Number(percentage)}
-        width={32}
+        size={32}
         type="circle"
         status={progressStatus}
         strokeWidth={6}

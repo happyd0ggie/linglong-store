@@ -75,7 +75,7 @@ const UpdateApp = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <p className={styles.updateAppTitle}>更新应用：</p>
+        <p className={styles.updateAppTitle}>更新应用</p>
         <Button
           type="text"
           icon={<ReloadOutlined spin={checking} />}
