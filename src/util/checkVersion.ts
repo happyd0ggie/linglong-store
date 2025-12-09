@@ -4,7 +4,7 @@
  * @param v2 - 第二个版本号
  * @returns 比较结果：1(v1>v2), -1(v1<v2), 0(v1=v2)
  */
-const compareVersions = (v1: string, v2: string): number => {
+export const compareVersions = (v1: string, v2: string): number => {
   // 将版本号分割为数字和字符串部分
   const a = String(v1).split(/[._-]/).map(s => (s === '' ? 0 : (Number.isNaN(Number(s)) ? s : Number(s))))
   const b = String(v2).split(/[._-]/).map(s => (s === '' ? 0 : (Number.isNaN(Number(s)) ? s : Number(s))))

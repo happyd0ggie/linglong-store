@@ -9,7 +9,7 @@ import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useUpdatesStore } from '@/stores/updates'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useAppInstall } from '@/hooks/useAppInstall'
-import { compareVersions } from '@/util/checkVersion'
+import compareVersions from '@/util/checkVersion'
 
 import { OperateType } from '@/constants/applicationCard'
 
