@@ -52,11 +52,13 @@ export const useInstalledAppsStore = create<Store.InstalledApps>((set, get) => (
 
       const detailsData = Array.isArray(response.data) ? response.data : []
 
+      // 转换成Map以便快速查找
+      const detailsMap = new Map(detailsData.map(d => [d.appId, d]))
+
       // 更新应用详情
       const updatedApps = installedApps.map(app => {
-        const detail = detailsData.find(
-          (d) => d.appId === app.appId && d.name === app.name && d.version === app.version,
-        )
+        const detail = detailsMap.get(app.appId) || null
+
 
         if (detail) {
           return {
