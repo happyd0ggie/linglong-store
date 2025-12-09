@@ -36,6 +36,7 @@ const ApplicationCard = ({
 
   const { installedApps, removeApp } = useInstalledAppsStore()
   const updates = useUpdatesStore(state => state.updates)
+  const checkUpdates = useUpdatesStore(state => state.checkUpdates)
   const { currentTask, queue } = useInstallQueueStore()
 
   useEffect(() => {
@@ -132,6 +133,7 @@ const ApplicationCard = ({
             await uninstallApp(appInfo.appId as string, appInfo.version as string)
             removeApp(appInfo.appId as string, appInfo.version as string)
             message.success('卸载成功')
+            checkUpdates(true)
           } catch (error) {
             console.error('[handleUninstall] 卸载失败:', error)
             message.error(`卸载失败: ${error}`)
@@ -180,7 +182,7 @@ const ApplicationCard = ({
 
       handleRunApp()
     }
-  }, [resolvedOperateId, appInfo, handleInstall, removeApp, runApp])
+  }, [resolvedOperateId, appInfo, handleInstall, removeApp, runApp, checkUpdates])
 
   return (
     <div

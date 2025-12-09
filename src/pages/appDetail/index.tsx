@@ -11,6 +11,7 @@ import { uninstallApp, runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useGlobalStore } from '@/stores/global'
+import { useUpdatesStore } from '@/stores/updates'
 import { InstallOptions, useAppInstall } from '@/hooks/useAppInstall'
 import { compareVersions } from '@/util/checkVersion'
 import { formatFileSize } from '@/util/format'
@@ -34,6 +35,7 @@ const AppDetail = () => {
   const installedApps = useInstalledAppsStore((state) => state.installedApps)
   const arch = useGlobalStore((state) => state.arch)
   const repoName = useGlobalStore((state) => state.repoName)
+  const checkUpdates = useUpdatesStore(state => state.checkUpdates)
 
   // 使用安装队列
   const { handleInstall, isAppInQueue, getInstallStatus } = useAppInstall()
@@ -184,6 +186,8 @@ const AppDetail = () => {
           if (remainingVersions.size === 0) {
             navigate('/my_apps')
           }
+          // 卸载后刷新更新列表，确保红点计数一致
+          checkUpdates(true)
         } catch (error) {
           console.error('[handleUninstall] Error uninstalling:', currentApp.appId, version, error)
           message.error(`卸载失败: ${error}`)
