@@ -7,7 +7,7 @@ import goBack from '@/assets/icons/go_back.svg'
 import DefaultIcon from '@/assets/linyaps.svg'
 
 import { getAppDetail, getSearchAppVersionList } from '@/apis/apps'
-import { searchVersions, uninstallApp, runApp } from '@/apis/invoke'
+import { uninstallApp, runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useGlobalStore } from '@/stores/global'
@@ -25,7 +25,6 @@ const AppDetail = () => {
   const app = location.state as API.INVOKE.InstalledApp | undefined
 
   const [versions, setVersions] = useState<VersionInfo[]>([])
-  const [installedVersionSet, setInstalledVersionSet] = useState<Set<string>>(new Set())
 
   const [screenshotList, setScreenshotList] = useState<API.APP.AppScreenshot[]>([])
   const [loading, setLoading] = useState(false)
@@ -84,6 +83,19 @@ const AppDetail = () => {
     return app
   }, [app, installedApps])
 
+  // 已安装版本集合（以 installedApps 为权威来源）
+  const installedVersionSet = useMemo(() => {
+    if (!currentApp?.appId) {
+      return new Set<string>()
+    }
+    return new Set(
+      installedApps
+        .filter(item => item.appId === currentApp.appId)
+        .map(item => item.version)
+        .filter(Boolean) as string[],
+    )
+  }, [currentApp?.appId, installedApps])
+
   // 获取最新版本
   const latestVersion = useMemo(() => {
     return versions.length > 0 ? versions[0].version : undefined
@@ -97,34 +109,7 @@ const AppDetail = () => {
     return installedVersionSet.has(latestVersion)
   }, [latestVersion, installedVersionSet])
 
-  const latestInstalledVersion = useMemo(() => {
-    const versionList = Array.from(installedVersionSet).filter(Boolean) as string[]
-    if (versionList.length === 0) {
-      return undefined
-    }
-
-    return versionList.reduce<string>((acc, curr) => {
-      return compareVersions(curr, acc) > 0 ? curr : acc
-    }, versionList[0])
-  }, [installedVersionSet])
-
   const hasInstalledVersion = useMemo(() => installedVersionSet.size > 0, [installedVersionSet])
-
-  const refreshInstalledVersions = async(): Promise<Set<string>> => {
-    if (!currentApp?.appId) {
-      console.info('refreshInstalledVersions: missing appId')
-      return new Set()
-    }
-    try {
-      const result = await searchVersions(currentApp.appId)
-      const nextSet = new Set(result.map(item => item.version))
-      setInstalledVersionSet(nextSet)
-      return nextSet
-    } catch (err) {
-      console.error('refreshInstalledVersions: error', err)
-      return installedVersionSet
-    }
-  }
 
   const loadVersions = async() => {
     if (!currentApp?.appId) {
@@ -164,12 +149,12 @@ const AppDetail = () => {
       }
     } catch (err) {
       console.error('appAllInfo: error', err)
-      message.error(`获取应用详情失败: ${err}`)
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      message.error(`获取应用详情失败: ${errorMessage}`)
     }
   }
   useEffect(() => {
     loadVersions()
-    refreshInstalledVersions()
     getAppAllInfo()
   }, [currentApp?.appId, arch, repoName])
 
@@ -193,9 +178,10 @@ const AppDetail = () => {
           console.info('[handleUninstall] Successfully uninstalled:', currentApp.appId, version)
           message.success('卸载成功')
 
-          const remainingVersions = await refreshInstalledVersions()
+          removeApp(currentApp.appId, version)
+          const remainingVersions = new Set(installedVersionSet)
+          remainingVersions.delete(version)
           if (remainingVersions.size === 0) {
-            removeApp(currentApp.appId, version)
             navigate('/my_apps')
           }
         } catch (error) {
@@ -240,14 +226,9 @@ const AppDetail = () => {
     }
 
     if (versionInfo && versionInfo.version) {
-      // 检查是否需要强制安装（降级安装）
-      const needForceInstall =
-        latestInstalledVersion !== undefined &&
-        compareVersions(latestInstalledVersion, versionInfo.version) > 0
-      installParam.force = needForceInstall
       installParam.version = versionInfo.version
       console.info(
-        `[handleVersionInstall] Preparing to install version: ${versionInfo.version} for app: ${currentApp.appId}, force: ${needForceInstall}`,
+        `[handleVersionInstall] Preparing to install version: ${versionInfo.version} for app: ${currentApp.appId}`,
       )
     }
 
@@ -483,15 +464,18 @@ const AppDetail = () => {
         <div className={styles.imgBox}>
           <div className={styles.imgList}>
             {
-              screenshotList.map((item) => {
-                // eslint-disable-next-line react/jsx-key
-                return (<Image
-                  width={320}
-                  height={180}
-                  src={item.screenshotKey}
-                  alt='应用截图'
-
-                />)
+              screenshotList.map((item, index) => {
+                const key = item.screenshotKey || `${currentApp.appId}-${index}`
+                return (
+                  <Image
+                    key={key}
+                    width={320}
+                    height={180}
+                    src={item.screenshotKey}
+                    alt='应用截图'
+                    fallback={DefaultIcon}
+                  />
+                )
               })
             }
           </div>

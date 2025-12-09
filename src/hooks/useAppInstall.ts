@@ -135,7 +135,7 @@ export const useAppInstall = () => {
       console.info(`[useAppInstall] Task enqueued: ${taskId} for app: ${app.appId}`)
 
       message.info({
-        content: `${app.zhName || app.name || app.appId} 已加入安装队列`,
+        content: `${app.zhName || app.name || app.appId} 开始安装`,
         key: `enqueue-${app.appId}`,
       })
     },

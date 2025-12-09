@@ -307,7 +307,7 @@ export const useInstallQueueStore = create<Store.InstallQueue>((set, get) => ({
         ...persistedTask,
         status: 'success',
         progress: 100,
-        message: '安装完成（恢复检查）',
+        message: '安装完成',
         finishedAt: Date.now(),
       }
 
