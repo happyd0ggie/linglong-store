@@ -2,13 +2,15 @@ import styles from './index.module.scss'
 import { useNavigate, useLocation } from 'react-router-dom'
 import menuList from './components/menuList'
 import SpeedTool from './components/speedTool'
-import { Popover } from 'antd'
+import { Badge, Popover } from 'antd'
 import { Speed } from '@icon-park/react'
 import { useSearchStore } from '@/stores/global'
+import { useMenuBadges } from '@/hooks/useMenuBadges'
 
 const Sidebar = ({ className }: { className: string }) => {
   // const updateAppSum = useInitStore((state) => state.updateAppNum)
   const resetKeyword = useSearchStore((state) => state.resetKeyword)
+  const menuBadges = useMenuBadges()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -23,6 +25,7 @@ const Sidebar = ({ className }: { className: string }) => {
         {
           menuList.map((item, index) => {
             const isActive = location.pathname === item.menuPath
+            const badgeCount = menuBadges[item.menuPath] || 0
             return (
               <div
                 className={`${styles.menuItem} ${isActive ? styles.active : ''}`}
@@ -33,7 +36,16 @@ const Sidebar = ({ className }: { className: string }) => {
                 <span className={styles.menuItemIcon}>
                   {isActive ? item.activeIcon : item.icon}
                 </span>
-                <span className={styles.menuItemText}>{item.menuName}</span>
+                <Badge
+                  count={badgeCount}
+                  overflowCount={99}
+                  showZero={false}
+                  size='small'
+                  offset={[6, 0]}
+                  className={styles.menuBadge}
+                >
+                  <span className={styles.menuItemText}>{item.menuName}</span>
+                </Badge>
               </div>
             )
           })
