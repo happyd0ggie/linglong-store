@@ -11,7 +11,7 @@ import { searchVersions, uninstallApp, runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useGlobalStore } from '@/stores/global'
-import { useAppInstall } from '@/hooks/useAppInstall'
+import { InstallOptions, useAppInstall } from '@/hooks/useAppInstall'
 import { compareVersions } from '@/util/checkVersion'
 import { formatFileSize } from '@/util/format'
 
@@ -231,35 +231,37 @@ const AppDetail = () => {
    * 处理版本安装
    * 使用统一的安装队列
    */
-  const handleVersionInstall = async(versionInfo: VersionInfo) => {
-    if (!versionInfo.version) {
-      message.error('缺少版本信息，无法安装')
-      return
-    }
+  const handleVersionInstall = async(versionInfo?: VersionInfo) => {
+    const installParam: InstallOptions = {}
 
     if (!currentApp?.appId) {
       message.error('应用信息不完整')
       return
     }
 
-    // 检查是否需要强制安装（降级安装）
-    const needForceInstall =
-      latestInstalledVersion !== undefined &&
-      compareVersions(latestInstalledVersion, versionInfo.version) > 0
+    if (versionInfo && versionInfo.version) {
+      // 检查是否需要强制安装（降级安装）
+      const needForceInstall =
+        latestInstalledVersion !== undefined &&
+        compareVersions(latestInstalledVersion, versionInfo.version) > 0
+      installParam.force = needForceInstall
+      installParam.version = versionInfo.version
+      console.info(
+        `[handleVersionInstall] Preparing to install version: ${versionInfo.version} for app: ${currentApp.appId}, force: ${needForceInstall}`,
+      )
+    }
 
     // 构建应用信息
     const appInfo: API.APP.AppMainDto = {
-      ...versionInfo,
       appId: currentApp.appId,
+      name: currentApp.name,
       zhName: currentApp.zhName,
       icon: currentApp.icon,
+      description: currentApp.description,
+      version: installParam.version,
     }
-
     // 使用统一的安装逻辑
-    await handleInstall(appInfo, {
-      version: versionInfo.version,
-      force: needForceInstall,
-    })
+    await handleInstall(appInfo, installParam)
   }
 
   const columns: TableColumnProps<VersionInfo>[] = [
@@ -382,19 +384,8 @@ const AppDetail = () => {
       handleRun()
       return
     }
-
-    // 构建应用信息
-    const appInfo: API.APP.AppMainDto = {
-      appId: currentApp.appId,
-      name: currentApp.name,
-      zhName: currentApp.zhName,
-      icon: currentApp.icon,
-      description: currentApp.description,
-      version: latestVersion,
-    }
-
-    // 使用统一的安装逻辑
-    await handleInstall(appInfo)
+    // 否则安装最新版本
+    handleVersionInstall()
   }
 
   return (
@@ -492,7 +483,7 @@ const AppDetail = () => {
         <div className={styles.imgBox}>
           <div className={styles.imgList}>
             {
-              screenshotList.map((item)=>{
+              screenshotList.map((item) => {
                 // eslint-disable-next-line react/jsx-key
                 return (<Image
                   width={320}

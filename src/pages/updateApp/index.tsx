@@ -66,7 +66,6 @@ const UpdateApp = () => {
    */
   const handleCheckUpdates = useCallback(() => {
     checkUpdates(true)
-    message.info('正在检查更新...')
   }, [checkUpdates])
 
   // 是否禁用一键更新按钮

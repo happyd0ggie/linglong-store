@@ -19,7 +19,7 @@ type AppInfo = API.APP.AppMainDto
 /**
  * 安装选项
  */
-interface InstallOptions {
+export interface InstallOptions {
   /** 指定版本 */
   version?: string
   /** 是否强制安装（覆盖已安装版本） */

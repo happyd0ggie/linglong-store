@@ -15,7 +15,6 @@ export const useGlobalInstallProgress = () => {
   const { updateProgress, markSuccess, markFailed, currentTask } = useInstallQueueStore()
   const checkUpdates = useUpdatesStore((state) => state.checkUpdates)
   const checkingUpdates = useUpdatesStore((state) => state.checking)
-  const removeUpdate = useUpdatesStore((state) => state.removeUpdate)
   const fetchInstalledApps = useInstalledAppsStore((state) => state.fetchInstalledApps)
 
   useEffect(() => {
@@ -42,9 +41,6 @@ export const useGlobalInstallProgress = () => {
             content: `${appName} 安装成功！`,
             key: `install-success-${progress.appId}`,
           })
-
-          // 从待更新列表移除
-          removeUpdate(progress.appId)
 
           // 后台刷新已安装列表和更新列表
           if (!checkingUpdates) {
@@ -83,6 +79,6 @@ export const useGlobalInstallProgress = () => {
         unlistenProgress()
       }
     }
-  }, [updateProgress, markSuccess, markFailed, currentTask, checkUpdates, checkingUpdates, removeUpdate, fetchInstalledApps])
+  }, [updateProgress, markSuccess, markFailed, currentTask, checkUpdates, checkingUpdates, fetchInstalledApps])
 }
 

@@ -29,8 +29,6 @@ interface UpdatesStore {
   startAutoRefresh: () => void
   /** 停止自动刷新 */
   stopAutoRefresh: () => void
-  /** 移除指定应用的更新记录 */
-  removeUpdate: (appId: string) => void
 }
 
 // ==================== 常量配置 ====================
@@ -194,16 +192,4 @@ export const useUpdatesStore = create<UpdatesStore>((set, get) => ({
     }
   },
 
-  /**
-   * 移除指定应用的更新记录
-   * 通常在应用更新完成后调用
-   * @param appId 应用ID
-   */
-  removeUpdate: (appId: string) => {
-    set(state => {
-      const nextUpdates = state.updates.filter(item => item.appId !== appId)
-      useGlobalStore.getState().getUpdateAppNum(nextUpdates.length)
-      return { updates: nextUpdates }
-    })
-  },
 }))
