@@ -70,8 +70,6 @@ declare namespace Store {
   interface InstalledApps {
     /** 已安装应用列表 */
     installedApps: API.INVOKE.InstalledApp[];
-    /** 需要更新的应用列表 */
-    needUpdateApps: API.INVOKE.InstalledApp[];
 
     /**
      * 获取已安装应用列表

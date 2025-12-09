@@ -45,7 +45,6 @@ const AppLayout = () => {
 
   /** 从已安装应用store中获取更新和加载方法 */
   const {
-    // needUpdateApps,
     fetchInstalledApps,
   } = useInstalledAppsStore()
 

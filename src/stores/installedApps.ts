@@ -11,7 +11,6 @@ import { message } from 'antd'
  */
 export const useInstalledAppsStore = create<Store.InstalledApps>((set, get) => ({
   installedApps: [],
-  needUpdateApps: [],
   fetchInstalledApps: async(includeBaseService = false) => {
     try {
       // 调用 Tauri 命令获取已安装应用（后端已过滤）
@@ -84,10 +83,6 @@ export const useInstalledAppsStore = create<Store.InstalledApps>((set, get) => (
     set(state => ({
       // 从已安装列表中移除
       installedApps: state.installedApps.filter(
-        app => !(app.appId === appId && app.version === version),
-      ),
-      // 从需要更新列表中移除
-      needUpdateApps: state.installedApps.filter(
         app => !(app.appId === appId && app.version === version),
       ),
     }))
