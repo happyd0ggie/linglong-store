@@ -1,18 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Button, Typography, Table, message, Modal, Spin, Space, Progress, Image } from 'antd'
+import { Button, Typography, Table, message, Spin, Space, Progress, Image } from 'antd'
 import type { TableColumnProps } from 'antd'
 import styles from './index.module.scss'
 import goBack from '@/assets/icons/go_back.svg'
 import DefaultIcon from '@/assets/linyaps.svg'
 
 import { getAppDetail, getSearchAppVersionList } from '@/apis/apps'
-import { uninstallApp, runApp } from '@/apis/invoke'
+import { runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useGlobalStore } from '@/stores/global'
-import { useUpdatesStore } from '@/stores/updates'
 import { InstallOptions, useAppInstall } from '@/hooks/useAppInstall'
+import { useAppUninstall } from '@/hooks/useAppUninstall'
 import { compareVersions } from '@/util/checkVersion'
 import { formatFileSize } from '@/util/format'
 
@@ -31,11 +31,10 @@ const AppDetail = () => {
   const [loading, setLoading] = useState(false)
   const [uninstallingVersion, setUninstallingVersion] = useState<string | null>(null)
 
-  const removeApp = useInstalledAppsStore((state) => state.removeApp)
   const installedApps = useInstalledAppsStore((state) => state.installedApps)
   const arch = useGlobalStore((state) => state.arch)
   const repoName = useGlobalStore((state) => state.repoName)
-  const checkUpdates = useUpdatesStore(state => state.checkUpdates)
+  const { uninstall } = useAppUninstall()
 
   // 使用安装队列
   const { handleInstall, isAppInQueue, getInstallStatus } = useAppInstall()
@@ -169,33 +168,22 @@ const AppDetail = () => {
       return
     }
 
-    Modal.confirm({
-      title: '确认卸载',
-      content: `确定要卸载 ${currentApp.zhName || currentApp.appId} 的版本 ${version} 吗？`,
-      onOk: async() => {
-        console.info('[handleUninstall] Starting to uninstall:', currentApp.appId, version)
-        setUninstallingVersion(version)
-        try {
-          await uninstallApp(currentApp.appId, version)
-          console.info('[handleUninstall] Successfully uninstalled:', currentApp.appId, version)
-          message.success('卸载成功')
-
-          removeApp(currentApp.appId, version)
-          const remainingVersions = new Set(installedVersionSet)
-          remainingVersions.delete(version)
-          if (remainingVersions.size === 0) {
-            navigate('/my_apps')
-          }
-          // 卸载后刷新更新列表，确保红点计数一致
-          checkUpdates(true)
-        } catch (error) {
-          console.error('[handleUninstall] Error uninstalling:', currentApp.appId, version, error)
-          message.error(`卸载失败: ${error}`)
-        } finally {
-          setUninstallingVersion(null)
-        }
-      },
-    })
+    setUninstallingVersion(version)
+    console.info('[handleUninstall] Starting to uninstall:', currentApp.appId, version)
+    try {
+      const result = await uninstall(
+        { appId: currentApp.appId, version, name: currentApp.name, zhName: currentApp.zhName },
+        { onAllRemoved: () => navigate('/my_apps') },
+      )
+      if (result) {
+        console.info('[handleUninstall] Successfully uninstalled:', currentApp.appId, version)
+      }
+    } catch (error) {
+      console.error('[handleUninstall] Error uninstalling:', currentApp.appId, version, error)
+      message.error(`卸载失败: ${error}`)
+    } finally {
+      setUninstallingVersion(null)
+    }
   }
 
   const handleRun = async() => {
