@@ -43,7 +43,7 @@ const UpdateApp = () => {
     }
 
     // 过滤掉已在队列中的应用
-    const appsToUpdate = updates.filter((app) => !isAppInQueue(app.appId))
+    const appsToUpdate = updates.filter((app) => app.appId && !isAppInQueue(app.appId))
 
     if (appsToUpdate.length === 0) {
       message.warning('所有应用都已在更新队列中')
