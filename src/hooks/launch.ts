@@ -14,6 +14,7 @@ import { useGlobalStore } from '@/stores/global'
 import { useConfigStore } from '@/stores/appConfig'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useInstallQueueStore } from '@/stores/installQueue'
+import { useUpdatesStore } from '@/stores/updates'
 import { useUpdateStore } from './useUploadStore'
 import { app } from '@tauri-apps/api'
 import { useLinglongEnv } from './useLinglongEnv'
@@ -48,6 +49,9 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
 
   // 安装队列状态
   const { checkRecovery } = useInstallQueueStore()
+
+  // 应用更新检测（已安装应用的更新）
+  const checkAppUpdates = useUpdatesStore.getState().checkUpdates
 
   // 更新检测状态
   const { checking: checkingUpdate, hasUpdate, updateInfo, checkForUpdate } = useUpdateStore()
@@ -167,6 +171,9 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
       await initSystemInfo()
       setProgress(40)
 
+      // 异步检查已安装应用的更新（不阻塞启动）
+      checkAppUpdates().catch((err) => console.warn('[launch] checkAppUpdates failed', err))
+
       // 步骤4: 加载已安装应用
       setCurrentStep('加载已安装应用')
       await loadInstalledApps()
@@ -203,6 +210,7 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
     recoverInstallTask,
     installedApps,
     onInited,
+    checkAppUpdates,
   ])
 
   /**
