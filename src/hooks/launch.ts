@@ -16,6 +16,7 @@ import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useUpdateStore } from './useUploadStore'
 import { app } from '@tauri-apps/api'
+import { useLinglongEnv } from './useLinglongEnv'
 
 /**
  * 应用启动初始化 Hook
@@ -29,6 +30,9 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   const [progress, setProgress] = useState(0)
   /** 错误信息 */
   const [error, setError] = useState<string | null>(null)
+  /** 环境检测状态 */
+  const [envReady, setEnvReady] = useState(false)
+  const [envChecked, setEnvChecked] = useState(false)
   /** 当前步骤 */
   const [currentStep, setCurrentStep] = useState<string>('初始化应用')
 
@@ -47,6 +51,8 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
 
   // 更新检测状态
   const { checking: checkingUpdate, hasUpdate, updateInfo, checkForUpdate } = useUpdateStore()
+  // 环境检测
+  const { checkEnv } = useLinglongEnv()
 
   // ==================== 初始化步骤 ====================
 
@@ -134,33 +140,49 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
     try {
       setError(null)
       setProgress(0)
+      console.info('[launch] initialize start')
 
-      // 步骤1: 获取应用版本
+      // 步骤1: 检查玲珑环境
+      setCurrentStep('检测玲珑环境')
+      const envResult = await checkEnv()
+      setProgress(20)
+      if (!envResult.ok) {
+        setError(envResult.reason || '检测到玲珑环境缺失或版本过低，请先安装')
+        setEnvReady(false)
+        setEnvChecked(true)
+        console.warn('[launch] env check failed', envResult.reason)
+        return
+      }
+      setEnvReady(true)
+      setEnvChecked(true)
+      console.info('[launch] env ready')
+
+      // 步骤2: 获取应用版本
       setCurrentStep('获取应用版本')
       const version = await getAppVersion()
-      setProgress(10)
+      setProgress(30)
 
-      // 步骤2: 获取系统信息
+      // 步骤3: 获取系统信息
       setCurrentStep('获取系统信息')
       await initSystemInfo()
-      setProgress(20)
+      setProgress(40)
 
-      // 步骤3: 加载已安装应用
+      // 步骤4: 加载已安装应用
       setCurrentStep('加载已安装应用')
       await loadInstalledApps()
-      setProgress(50)
+      setProgress(55)
 
-      // 步骤4: 加载已安装应用详情
+      // 步骤5: 加载已安装应用详情
       setCurrentStep('加载已安装应用详情')
       await loadInstalledAppsDetail()
       setProgress(80)
 
-      // 步骤5: 检查商店版本（可选）
+      // 步骤6: 检查商店版本（可选）
       setCurrentStep('检查商店版本')
       await checkStoreVersion(version)
       setProgress(90)
 
-      // 步骤6: 恢复中断的安装任务
+      // 步骤7: 恢复中断的安装任务
       setCurrentStep('检查安装任务')
       recoverInstallTask(installedApps)
       setProgress(100)
@@ -189,6 +211,8 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   const retry = useCallback(async() => {
     setIsInit(false)
     setError(null)
+    setEnvReady(false)
+    setEnvChecked(false)
     await initialize()
   }, [initialize])
 
@@ -205,6 +229,8 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
 
   return {
     isInit,
+    envReady,
+    envChecked,
     progress,
     currentStep,
     error,

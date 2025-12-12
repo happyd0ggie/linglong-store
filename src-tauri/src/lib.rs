@@ -11,7 +11,17 @@ use services::installed::{
     install_linglong_app,
     InstalledApp,
 };
-use services::linglong::{search_remote_app, get_ll_cli_version, SearchResultItem};
+use services::linglong::{
+    search_remote_app,
+    get_ll_cli_version,
+    SearchResultItem,
+};
+use services::linglong_env::{
+    check_linglong_env,
+    install_linglong_env,
+    LinglongEnvCheckResult,
+    InstallLinglongResult,
+};
 pub mod modules;
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 
@@ -29,6 +39,18 @@ async fn search_remote_app_cmd(app_id: String) -> Result<Vec<SearchResultItem>, 
 #[tauri::command]
 async fn get_ll_cli_version_cmd() -> Result<String, String> {
     get_ll_cli_version().await
+}
+
+#[tauri::command]
+async fn check_linglong_env_cmd() -> Result<LinglongEnvCheckResult, String> {
+    // 与旧版商店保持一致的最低版本要求
+    const MIN_LINGLONG_VERSION: &str = "1.9.0";
+    check_linglong_env(MIN_LINGLONG_VERSION).await
+}
+
+#[tauri::command]
+async fn install_linglong_env_cmd(script: String) -> Result<InstallLinglongResult, String> {
+    install_linglong_env(script).await
 }
 
 #[tauri::command]
@@ -114,8 +136,10 @@ pub fn run() {
             search_versions,
             run_app,
             install_app,
-            search_remote_app_cmd
-            , get_ll_cli_version_cmd
+            search_remote_app_cmd,
+            get_ll_cli_version_cmd,
+            check_linglong_env_cmd,
+            install_linglong_env_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

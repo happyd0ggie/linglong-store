@@ -20,6 +20,10 @@ declare namespace Hooks {
     interface UseLaunchReturn {
       /** 应用是否初始化完成 */
       isInit: boolean
+      /** 玲珑环境是否已准备就绪 */
+      envReady: boolean
+      /** 是否已经完成环境检测 */
+      envChecked: boolean
       /** 初始化进度（0-100） */
       progress: number
       /** 当前初始化步骤描述 */
@@ -37,4 +41,3 @@ declare namespace Hooks {
     }
   }
 }
-

@@ -3,12 +3,17 @@ import Logo from '@/assets/linyaps.svg'
 
 import { useLaunch } from '@/hooks/launch'
 import { Progress } from 'antd'
+import LinglongEnvDialog from '@/components/LinglongEnvDialog'
 
 // 首屏页面
 const LaunchPage = ()=>{
   const {
     progress,
     currentStep,
+    error,
+    retry,
+    envReady,
+    envChecked,
   } = useLaunch()
 
   return <div className={styles.launchPage} >
@@ -38,6 +43,11 @@ const LaunchPage = ()=>{
         4.如出现特殊现象，请在商店内 [关于程序] - [意见反馈]，进行反馈。
       </p>
     </div>
+    <LinglongEnvDialog
+      open={envChecked && !envReady}
+      reason={error || undefined}
+      onEnvReady={retry}
+    />
   </div>
 }
 

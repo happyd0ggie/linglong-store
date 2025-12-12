@@ -58,5 +58,29 @@ declare namespace API {
       module?: string;
       icon?: string;
     }
+
+    interface LinglongRepo {
+      name: string;
+      url: string;
+      alias?: string;
+      priority?: string;
+    }
+
+    interface LinglongEnvCheckResult {
+      ok: boolean;
+      reason?: string;
+      arch?: string;
+      osVersion?: string;
+      detailMsg?: string;
+      llVersion?: string;
+      llBinVersion?: string;
+      repoName?: string;
+      repos?: LinglongRepo[];
+    }
+
+    interface InstallLinglongResult {
+      stdout: string;
+      stderr: string;
+    }
   }
 }

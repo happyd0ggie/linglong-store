@@ -126,3 +126,20 @@ export const searchRemoteApp = async(
 export const getLlCliVersion = async(): Promise<string> => {
   return await invoke('get_ll_cli_version_cmd')
 }
+
+/**
+ * 检查玲珑环境状态
+ */
+export const checkLinglongEnv = async(): Promise<API.INVOKE.LinglongEnvCheckResult> => {
+  return await invoke('check_linglong_env_cmd')
+}
+
+/**
+ * 执行玲珑环境自动安装
+ * @param script 安装脚本字符串
+ */
+export const installLinglongEnv = async(
+  script: string,
+): Promise<API.INVOKE.InstallLinglongResult> => {
+  return await invoke('install_linglong_env_cmd', { script })
+}

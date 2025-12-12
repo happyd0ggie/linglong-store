@@ -54,17 +54,5 @@ pub async fn search_remote_app(app_id: String) -> Result<Vec<SearchResultItem>, 
 }
 
 pub async fn get_ll_cli_version() -> Result<String, String> {
-    // Run `ll-cli --version` and return the trimmed string
-    let output = ll_cli_command()
-        .arg("--version")
-        .output()
-        .map_err(|e| format!("Failed to execute 'll-cli --version': {}", e))?;
-
-    if !output.status.success() {
-        let error_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("ll-cli --version command failed: {}", error_msg));
-    }
-
-    let output_string = String::from_utf8_lossy(&output.stdout);
-    Ok(output_string.trim().to_string())
+    crate::services::linglong_env::get_ll_cli_version().await
 }

@@ -51,6 +51,30 @@ declare namespace Store {
   }
 
   /**
+   * 环境信息 Store
+   * 管理玲珑环境检测与安装相关信息
+   */
+  interface Env {
+    checking: boolean
+    installing: boolean
+    checked: boolean
+    envReady: boolean
+    reason?: string
+    osVersion: string
+    arch: string
+    llVersion: string
+    llBinVersion: string
+    repoName: string
+    detailMsg: string
+    repos: API.INVOKE.LinglongRepo[]
+    setChecking: (value: boolean) => void
+    setInstalling: (value: boolean) => void
+    setReason: (value?: string) => void
+    setEnvReady: (value: boolean) => void
+    setEnvInfo: (value: Partial<Store.Env>) => void
+  }
+
+  /**
    * Search Store（搜索存储）
    * 管理搜索关键词状态
    */
