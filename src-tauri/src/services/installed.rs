@@ -8,8 +8,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use portable_pty::{native_pty_system, PtySize, Child};
 use once_cell::sync::Lazy;
-use tokio::time::sleep;
-use crate::services::process::{kill_linglong_app, get_running_linglong_apps};
+use crate::services::process::kill_linglong_app;
 use crate::services::{ll_cli_command, ll_cli_pty_command};
 
 // 全局进程管理器，存储正在进行的安装进程
@@ -123,40 +122,17 @@ pub async fn get_installed_apps(include_base_service: bool) -> Result<Vec<Instal
     Ok(apps)
 }
 
-async fn is_app_running(app_id: &str) -> Result<bool, String> {
-    let running_apps = get_running_linglong_apps().await?;
-    Ok(running_apps.iter().any(|app| app.name == app_id))
-}
 /// 卸载指定的玲珑应用
 pub async fn uninstall_linglong_app(app_id: String, version: String) -> Result<String, String> {
     info!("[uninstall_linglong_app] Checking and stopping app before uninstall: {}", app_id);
 
-    // 尝试停止运行中的应用，最多 5 次，间隔 1 秒
-    for attempt in 1..=5 {
-        let running = is_app_running(&app_id).await?;
-        if !running {
-            info!("[uninstall_linglong_app] App not running, proceed to uninstall: {}", app_id);
-            break;
-        }
-
-        info!("[uninstall_linglong_app] App is running, attempt {} to kill: {}", attempt, app_id);
-        if let Err(err) = kill_linglong_app(app_id.clone()).await {
-            warn!("[uninstall_linglong_app] kill attempt {} failed for {}: {}", attempt, app_id, err);
-        }
-
-        if attempt == 5 {
-            // 最后一轮后再检查一次，仍在运行则返回错误
-            let still_running = is_app_running(&app_id).await.unwrap_or(true);
-            if still_running {
-                let err_msg = "卸载失败，请先停止应用运行。".to_string();
-                warn!("[uninstall_linglong_app] {}", err_msg);
-                return Err(err_msg);
-            }
-            break;
-        }
-
-        sleep(Duration::from_secs(1)).await;
+    // 尝试停止运行中的应用（kill_linglong_app 内部已包含重试逻辑）
+    if let Err(err) = kill_linglong_app(app_id.clone()).await {
+        warn!("[uninstall_linglong_app] Failed to stop app {}: {}", app_id, err);
+        return Err(format!("卸载失败，请先停止应用运行。详情: {}", err));
     }
+
+    info!("[uninstall_linglong_app] App stopped successfully, proceeding to uninstall: {}", app_id);
 
     let app_ref = format!("{}/{}", app_id, version);
 
