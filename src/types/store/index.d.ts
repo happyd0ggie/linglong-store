@@ -14,7 +14,7 @@ declare namespace Store {
     /** 是否显示基础运行服务 */
     showBaseService: boolean
     /** 点击关闭时是直接关闭还是最小化到托盘 */
-    closeOrHide: string
+   closeOrHide: string
     /** 切换版本检查状态 */
     changeCheckVersionStatus: (value: boolean) => void
     /** 切换基础服务显示状态 */
@@ -24,16 +24,40 @@ declare namespace Store {
   }
 
   /**
+   * 环境信息状态（已合并到 Global Store）
+   * 管理玲珑环境检测与安装相关信息
+   */
+  interface EnvState {
+    checking: boolean
+    installing: boolean
+    checked: boolean
+    envReady: boolean
+    reason?: string
+    osVersion: string
+    /** 当前系统架构 */
+    arch: string
+    llVersion: string
+    llBinVersion: string
+    /** 当前使用的仓库 */
+    repoName: string
+    detailMsg: string
+    repos: API.INVOKE.LinglongRepo[]
+    setChecking: (value: boolean) => void
+    setInstalling: (value: boolean) => void
+    setReason: (value?: string) => void
+    setEnvReady: (value: boolean) => void
+    setEnvInfo: (value: Partial<Store.EnvState>) => void
+  }
+
+  type Env = EnvState
+
+  /**
    * Global Store（全局存储）
    * 管理应用初始化状态、系统架构和仓库名称
    */
-  interface Global {
+  interface Global extends EnvState {
     /** 应用是否初始化完成 */
     isInited: boolean
-    /** 当前系统架构 */
-    arch: string
-    /** 当前使用的仓库 */
-    repoName: string
     /** 需要更新的应用数量 */
     updateAppNum: number
     /** 当前客户端/商店版本（来自 package.json） */
@@ -48,30 +72,6 @@ declare namespace Store {
     getUpdateAppNum: (num: number) => void
     /** 更新 app 版本号 */
     setAppVersion: (value: string) => void
-  }
-
-  /**
-   * 环境信息 Store
-   * 管理玲珑环境检测与安装相关信息
-   */
-  interface Env {
-    checking: boolean
-    installing: boolean
-    checked: boolean
-    envReady: boolean
-    reason?: string
-    osVersion: string
-    arch: string
-    llVersion: string
-    llBinVersion: string
-    repoName: string
-    detailMsg: string
-    repos: API.INVOKE.LinglongRepo[]
-    setChecking: (value: boolean) => void
-    setInstalling: (value: boolean) => void
-    setReason: (value?: string) => void
-    setEnvReady: (value: boolean) => void
-    setEnvInfo: (value: Partial<Store.Env>) => void
   }
 
   /**

@@ -2,7 +2,6 @@ import { useCallback } from 'react'
 import { message } from 'antd'
 import { findShellString } from '@/apis/apps'
 import { checkLinglongEnv, installLinglongEnv } from '@/apis/invoke'
-import { useEnvStore } from '@/stores/env'
 import { useGlobalStore } from '@/stores/global'
 
 const DEFAULT_REASON = '检测到系统未安装玲珑环境，请先安装'
@@ -10,13 +9,15 @@ const DEFAULT_REASON = '检测到系统未安装玲珑环境，请先安装'
 export const useLinglongEnv = () => {
   // 直接从 store 获取 setter 函数，避免使用 selector 返回对象导致无限循环
   // setter 函数是稳定的，不需要响应式订阅
-  const setChecking = useEnvStore.getState().setChecking
-  const setInstalling = useEnvStore.getState().setInstalling
-  const setReason = useEnvStore.getState().setReason
-  const setEnvReady = useEnvStore.getState().setEnvReady
-  const setEnvInfo = useEnvStore.getState().setEnvInfo
-  const setArch = useGlobalStore.getState().setArch
-  const setRepoName = useGlobalStore.getState().setRepoName
+  const {
+    setChecking,
+    setInstalling,
+    setReason,
+    setEnvReady,
+    setEnvInfo,
+    setArch,
+    setRepoName,
+  } = useGlobalStore.getState()
 
   const runCheck = useCallback(async(): Promise<API.INVOKE.LinglongEnvCheckResult> => {
     setChecking(true)

@@ -3,7 +3,7 @@ import { Button, Modal, Space, Typography } from 'antd'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useLinglongEnv } from '@/hooks/useLinglongEnv'
-import { useEnvStore } from '@/stores/env'
+import { useGlobalStore } from '@/stores/global'
 
 const MANUAL_INSTALL_URL = 'https://www.linglong.space/guide/start/install.html'
 
@@ -20,8 +20,8 @@ const LinglongEnvDialog = ({
 }: Props) => {
   const { installEnv, checkEnv } = useLinglongEnv()
   // 分开订阅 store 状态，避免 selector 返回对象导致无限循环
-  const checking = useEnvStore((state) => state.checking)
-  const installing = useEnvStore((state) => state.installing)
+  const checking = useGlobalStore((state) => state.checking)
+  const installing = useGlobalStore((state) => state.installing)
 
   const closeApp = useCallback(async() => {
     const win = getCurrentWindow()
