@@ -24,9 +24,13 @@ export const useLinglongEnv = () => {
     try {
       const res = await checkLinglongEnv()
       console.info('[useLinglongEnv] checkEnv result', res)
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      const osVersionWithUa = res.osVersion
+        ? `${res.osVersion}${userAgent ? ` (${userAgent})` : ''}`
+        : (userAgent || '')
       setEnvInfo({
         arch: res.arch || '',
-        osVersion: res.osVersion || '',
+        osVersion: osVersionWithUa,
         detailMsg: res.detailMsg || '',
         llVersion: res.llVersion || '',
         llBinVersion: res.llBinVersion || '',
