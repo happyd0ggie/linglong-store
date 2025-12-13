@@ -28,6 +28,8 @@ export const useGlobalStore = create<Store.Global>((set) => ({
   envReady: false,
   reason: undefined,
   osVersion: '',
+  glibcVersion: '',
+  kernelInfo: '',
   llVersion: '',
   llBinVersion: '',
   detailMsg: '',

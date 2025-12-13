@@ -43,6 +43,8 @@ declare namespace Store {
     envReady: boolean
     reason?: string
     osVersion: string
+    glibcVersion: string
+    kernelInfo: string
     /** 当前系统架构 */
     arch: string
     llVersion: string

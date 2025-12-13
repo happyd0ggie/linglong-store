@@ -25,12 +25,25 @@ export const useLinglongEnv = () => {
       const res = await checkLinglongEnv()
       console.info('[useLinglongEnv] checkEnv result', res)
       const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-      const osVersionWithUa = res.osVersion
-        ? `${res.osVersion}${userAgent ? ` (${userAgent})` : ''}`
-        : (userAgent || '')
+      const versionParts: string[] = []
+      if (res.osVersion) {
+        versionParts.push(`OS: ${res.osVersion}`)
+      }
+      if (res.glibcVersion) {
+        versionParts.push(`glibc: ${res.glibcVersion}`)
+      }
+      if (res.kernelInfo) {
+        versionParts.push(`kernel: ${res.kernelInfo}`)
+      }
+      if (userAgent) {
+        versionParts.push(`UA: ${userAgent}`)
+      }
+      const osVersionWithUa = versionParts.join(' | ')
       setEnvInfo({
         arch: res.arch || '',
         osVersion: osVersionWithUa,
+        glibcVersion: res.glibcVersion || '',
+        kernelInfo: res.kernelInfo || '',
         detailMsg: res.detailMsg || '',
         llVersion: res.llVersion || '',
         llBinVersion: res.llBinVersion || '',
@@ -60,6 +73,8 @@ export const useLinglongEnv = () => {
         llVersion: '',
         llBinVersion: '',
         osVersion: '',
+        glibcVersion: '',
+        kernelInfo: '',
         arch: '',
       })
       setEnvReady(false)

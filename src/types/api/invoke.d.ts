@@ -71,6 +71,8 @@ declare namespace API {
       reason?: string;
       arch?: string;
       osVersion?: string;
+      glibcVersion?: string;
+      kernelInfo?: string;
       detailMsg?: string;
       llVersion?: string;
       llBinVersion?: string;

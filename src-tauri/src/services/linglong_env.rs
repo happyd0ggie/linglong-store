@@ -25,6 +25,8 @@ pub struct LinglongEnvCheckResult {
     pub reason: Option<String>,
     pub arch: Option<String>,
     pub os_version: Option<String>,
+    pub glibc_version: Option<String>,
+    pub kernel_info: Option<String>,
     pub detail_msg: Option<String>,
     pub ll_version: Option<String>,
     pub ll_bin_version: Option<String>,
@@ -130,6 +132,30 @@ pub async fn get_ll_cli_version() -> Result<String, String> {
     get_ll_cli_version_inner()
 }
 
+fn parse_glibc_version(raw: &str) -> Option<String> {
+    if raw.trim().is_empty() {
+        return None;
+    }
+    // 取首行，避免多余信息干扰
+    let first_line = raw.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
+        return None;
+    }
+
+    // 尝试从首行中找到形如 2.35 的片段
+    if let Some(token) = first_line
+        .split_whitespace()
+        .rev()
+        .find(|part| part.chars().all(|c| c.is_ascii_digit() || c == '.'))
+    {
+        if token.contains('.') {
+            return Some(token.to_string());
+        }
+    }
+
+    Some(first_line.to_string())
+}
+
 fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
     let to_parts = |v: &str| -> Vec<i32> {
         v.split(|c| c == '.' || c == '-' || c == '_')
@@ -176,6 +202,40 @@ pub async fn check_linglong_env(min_version: &str) -> Result<LinglongEnvCheckRes
         if output.status.success() {
             result.os_version = Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
         }
+    }
+
+    // 获取 glibc 版本（ldd --version）
+    let glibc_version = Command::new("ldd")
+        .arg("--version")
+        .output()
+        .ok()
+        .and_then(|output| {
+            if !output.status.success() {
+                return None;
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            parse_glibc_version(&stdout).or_else(|| parse_glibc_version(&stderr))
+        })
+        .unwrap_or_else(|| "N/A".to_string());
+    result.glibc_version = Some(glibc_version.clone());
+
+    // 获取内核信息（uname -a）
+    let kernel_info = Command::new("uname")
+        .arg("-a")
+        .output()
+        .ok()
+        .and_then(|output| {
+            if output.status.success() {
+                Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| "N/A".to_string());
+    result.kernel_info = Some(kernel_info.clone());
+    if result.os_version.is_none() && kernel_info != "N/A" {
+        result.os_version = Some(kernel_info);
     }
 
     // dpkg 信息（仅作为日志展示）
