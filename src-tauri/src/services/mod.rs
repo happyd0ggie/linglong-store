@@ -6,6 +6,7 @@ pub mod process;
 pub mod installed;
 pub mod linglong;
 pub mod linglong_env;
+pub mod prune;
 
 const ENGLISH_LOCALE_ENV: [(&str, &str); 4] = [
     ("LC_ALL", "C.UTF-8"),

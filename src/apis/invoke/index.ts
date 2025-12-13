@@ -143,3 +143,12 @@ export const installLinglongEnv = async(
 ): Promise<API.INVOKE.InstallLinglongResult> => {
   return await invoke('install_linglong_env_cmd', { script })
 }
+
+/**
+ * 清理废弃的基础服务
+ * 调用 ll-cli prune 命令清理不再使用的运行时和基础服务
+ * @returns Promise<string> 清理操作的结果消息
+ */
+export const pruneApps = async(): Promise<string> => {
+  return await invoke('prune_apps')
+}

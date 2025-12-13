@@ -49,6 +49,17 @@
                 background: #016FFD;
                 border-radius: 0.2rem;
                 cursor: pointer;
+                transition: opacity 0.2s;
+
+                &:hover {
+                    opacity: 0.85;
+                }
+
+                &.disabled {
+                    background: #999;
+                    cursor: not-allowed;
+                    pointer-events: none;
+                }
             }
         }
     }

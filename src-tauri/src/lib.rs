@@ -11,6 +11,7 @@ use services::installed::{
     install_linglong_app,
     InstalledApp,
 };
+use services::prune::prune_linglong_apps;
 use services::linglong::{
     search_remote_app,
     get_ll_cli_version,
@@ -101,6 +102,11 @@ async fn install_app(
     result
 }
 
+#[tauri::command]
+async fn prune_apps() -> Result<String, String> {
+    prune_linglong_apps().await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -136,6 +142,7 @@ pub fn run() {
             search_versions,
             run_app,
             install_app,
+            prune_apps,
             search_remote_app_cmd,
             get_ll_cli_version_cmd,
             check_linglong_env_cmd,
