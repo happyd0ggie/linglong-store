@@ -6,6 +6,7 @@
  * - 检查应用更新信息
  * - 初始化配置
  * - 恢复中断的安装任务
+ * - 初始化匿名统计（如用户允许）
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -18,6 +19,7 @@ import { useUpdatesStore } from '@/stores/updates'
 import { useUpdateStore } from './useUploadStore'
 import { app } from '@tauri-apps/api'
 import { useLinglongEnv } from './useLinglongEnv'
+import { initAnalytics } from '@/services/analyticsService'
 
 /**
  * 应用启动初始化 Hook
@@ -192,7 +194,15 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
       // 步骤7: 恢复中断的安装任务
       setCurrentStep('检查安装任务')
       recoverInstallTask(installedApps)
+      setProgress(95)
+
+      // 步骤8: 初始化匿名统计（获取设备指纹和IP）
+      setCurrentStep('初始化服务')
+      await initAnalytics()
       setProgress(100)
+
+      // 注意：匿名统计确认弹窗由 AppLayout 组件根据 allowAnalytics 状态显示
+      // 如果用户已经允许统计，AppLayout 会在初始化完成后发送访问记录
 
       onInited()
       setIsInit(true)

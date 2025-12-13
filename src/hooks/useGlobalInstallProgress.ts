@@ -10,6 +10,7 @@ import { onInstallProgress } from '@/apis/invoke'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useUpdatesStore } from '@/stores/updates'
 import { useInstalledAppsStore } from '@/stores/installedApps'
+import { sendInstallRecord } from '@/services/analyticsService'
 
 export const useGlobalInstallProgress = () => {
   const { updateProgress, markSuccess, markFailed, currentTask } = useInstallQueueStore()
@@ -41,6 +42,19 @@ export const useGlobalInstallProgress = () => {
             content: `${appName} 安装成功！`,
             key: `install-success-${progress.appId}`,
           })
+
+          // 发送安装统计记录（异步，不阻塞主流程）
+          if (currentTask?.appInfo) {
+            const appInfo = currentTask.appInfo
+            sendInstallRecord({
+              appId: appInfo.appId,
+              name: appInfo.name,
+              version: currentTask.version || appInfo.version,
+              arch: appInfo.arch,
+              module: appInfo.module,
+              channel: appInfo.channel,
+            }).catch((err) => console.warn('[useGlobalInstallProgress] sendInstallRecord failed:', err))
+          }
 
           // 后台刷新已安装列表和更新列表
           if (!checkingUpdates) {

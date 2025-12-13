@@ -132,3 +132,25 @@ export const findShellString = () => {
 export const updateShellString = (data: API.APP.BaseConfigDtl) => {
   return post<API.Common.BaseResponse<string>>('/app/updateShellString', data)
 }
+
+// ==================== 匿名统计相关 API ====================
+
+/**
+ * 保存启动访问记录（匿名统计）
+ * 记录商店启动时的环境信息，用于统计分析
+ * @param data 访问记录数据
+ * @returns 操作结果
+ */
+export const saveVisitRecord = (data: API.APP.SaveVisitRecordVO) => {
+  return post<API.Common.BaseResponse<null>>('/app/saveVisitRecord', data)
+}
+
+/**
+ * 保存安装/卸载记录（匿名统计）
+ * 记录用户安装和卸载应用的操作，用于统计分析
+ * @param data 安装记录数据
+ * @returns 操作结果
+ */
+export const saveInstalledRecord = (data: API.APP.SaveInstalledRecordVO) => {
+  return post<API.Common.BaseResponse<null>>('/app/saveInstalledRecord', data)
+}

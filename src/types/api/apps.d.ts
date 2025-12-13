@@ -296,6 +296,64 @@ declare namespace API {
         }
 
         /**
+         * 启动访问记录保存参数（匿名统计）
+         * 用于记录商店启动时的环境信息
+         */
+        interface SaveVisitRecordVO {
+            /** 商店版本 */
+            appVersion?: string
+            /** 客户端IP */
+            clientIp?: string
+            /** 系统架构 */
+            arch?: string
+            /** 玲珑CLI版本 */
+            llVersion?: string
+            /** 玲珑Bin组件版本 */
+            llBinVersion?: string
+            /** 玲珑组件详细信息 */
+            detailMsg?: string
+            /** 系统版本信息 */
+            osVersion?: string
+            /** 仓库名称 */
+            repoName?: string
+            /** 访问者ID/设备指纹 */
+            visitorId?: string
+        }
+
+        /**
+         * 安装/卸载记录中的应用项
+         */
+        interface InstalledRecordItem {
+            /** 应用ID */
+            appId?: string
+            /** 应用名称 */
+            name?: string
+            /** 版本 */
+            version?: string
+            /** 架构 */
+            arch?: string
+            /** 模块 */
+            module?: string
+            /** 通道 */
+            channel?: string
+        }
+
+        /**
+         * 安装/卸载记录保存参数（匿名统计）
+         * 用于记录应用安装和卸载操作
+         */
+        interface SaveInstalledRecordVO {
+            /** 访问者ID/设备指纹 */
+            visitorId?: string
+            /** 客户端IP */
+            clientIp?: string
+            /** 新增安装的应用列表 */
+            addedItems?: InstalledRecordItem[]
+            /** 卸载移除的应用列表 */
+            removedItems?: InstalledRecordItem[]
+        }
+
+        /**
          * 基础配置详情
          */
         interface BaseConfigDtl {

@@ -32,6 +32,9 @@ export const useGlobalStore = create<Store.Global>((set) => ({
   llBinVersion: '',
   detailMsg: '',
   repos: [],
+  // 匿名统计相关
+  visitorId: '',
+  clientIp: '',
   onInited: () => set(() => ({ isInited: true })),
   setArch: (value: string) => set(() => ({
     arch: value,
@@ -59,6 +62,8 @@ export const useGlobalStore = create<Store.Global>((set) => ({
     console.info('[env] setEnvInfo', value)
     return next
   }),
+  setVisitorId: (value: string) => set(() => ({ visitorId: value })),
+  setClientIp: (value: string) => set(() => ({ clientIp: value })),
 }))
 
 // /**

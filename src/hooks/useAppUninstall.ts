@@ -3,6 +3,7 @@ import { message, Modal } from 'antd'
 import { uninstallApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useUpdatesStore } from '@/stores/updates'
+import { sendUninstallRecord } from '@/services/analyticsService'
 
 type UninstallOptions = {
   /** 所有版本卸载完后的回调（例如跳转） */
@@ -22,6 +23,9 @@ type BasicAppInfo = {
   version?: string
   name?: string
   zhName?: string
+  arch?: string
+  module?: string
+  channel?: string
 }
 
 /**
@@ -32,7 +36,7 @@ export const useAppUninstall = () => {
   const checkUpdates = useUpdatesStore(state => state.checkUpdates)
 
   const performUninstall = useCallback(
-    async(appId: string, version: string, options?: UninstallOptions) => {
+    async(appId: string, version: string, appInfo?: BasicAppInfo, options?: UninstallOptions) => {
       try {
         await uninstallApp(appId, version)
 
@@ -45,6 +49,16 @@ export const useAppUninstall = () => {
         }
 
         await checkUpdates(true)
+
+        // 发送卸载统计记录（异步，不阻塞主流程）
+        sendUninstallRecord({
+          appId,
+          name: appInfo?.name,
+          version,
+          arch: appInfo?.arch,
+          module: appInfo?.module,
+          channel: appInfo?.channel,
+        }).catch((err) => console.warn('[useAppUninstall] sendUninstallRecord failed:', err))
 
         if (!options?.silent) {
           message.success('卸载成功')
@@ -76,7 +90,7 @@ export const useAppUninstall = () => {
         `确认要卸载 ${appInfo.zhName || appInfo.name || appId} 的版本 ${version} 吗？`
 
       if (options?.skipConfirm) {
-        return performUninstall(appId, version, options)
+        return performUninstall(appId, version, appInfo, options)
       }
 
       return new Promise<boolean>((resolve) => {
@@ -87,7 +101,7 @@ export const useAppUninstall = () => {
           cancelText: '取消',
           onOk: async() => {
             try {
-              const result = await performUninstall(appId, version, options)
+              const result = await performUninstall(appId, version, appInfo, options)
               resolve(result)
             } catch (error) {
               resolve(false)
