@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button, Typography, Table, message, Spin, Space, Progress, Image } from 'antd'
+import { CopyOutlined } from '@ant-design/icons'
 import type { TableColumnProps } from 'antd'
 import styles from './index.module.scss'
 import goBack from '@/assets/icons/go_back.svg'
@@ -202,6 +203,21 @@ const AppDetail = () => {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error('[handleRun] Failed to run app:', errorMessage)
       message.error(`启动失败: ${errorMessage}`)
+    }
+  }
+
+  const handleCopyAppId = async(appId?: string) => {
+    if (!appId) {
+      message.error('应用ID不存在')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(appId)
+      message.success('应用ID已复制')
+    } catch (error) {
+      console.error('[handleCopyAppId] Failed to copy:', error)
+      message.error('复制失败，请手动复制')
     }
   }
 
@@ -433,9 +449,19 @@ const AppDetail = () => {
                 </Typography.Text>
               </div>
               <div className={styles.modules}>
-                <Typography.Text ellipsis>
-                  {currentApp.appId}
-                </Typography.Text>
+                <div className={styles.appIdRow}>
+                  <Typography.Text ellipsis className={styles.appIdValue}>
+                    {currentApp.appId}
+                  </Typography.Text>
+                  <Button
+                    type='text'
+                    size='small'
+                    icon={<CopyOutlined />}
+                    aria-label='复制应用ID'
+                    className={styles.copyButton}
+                    onClick={() => handleCopyAppId(currentApp.appId)}
+                  />
+                </div>
                 <Typography.Text ellipsis>
                   应用ID
                 </Typography.Text>
