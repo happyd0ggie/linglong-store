@@ -1,8 +1,8 @@
+use crate::services::ll_cli_command;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::sleep;
-use log::{info, warn};
-use crate::services::ll_cli_command;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LinglongAppInfo {
@@ -110,25 +110,34 @@ pub async fn kill_linglong_app(app_name: String) -> Result<String, String> {
             return Ok(format!("Successfully stopped {}", app_name));
         }
 
-        info!("[kill_linglong_app] App is running, attempt {} to kill: {}", attempt, app_name);
+        info!(
+            "[kill_linglong_app] App is running, attempt {} to kill: {}",
+            attempt, app_name
+        );
         let output = ll_cli_command()
             .arg("kill")
+            .arg("-s")
+            .arg("9")
             .arg(&app_name)
             .output()
             .map_err(|e| format!("Failed to execute 'll-cli kill': {}", e))?;
-
+        let mut error_msg = String::from_utf8_lossy(&output.stderr).to_string();
         if !output.status.success() {
-            let error_msg = String::from_utf8_lossy(&output.stderr);
-            warn!("[kill_linglong_app] kill attempt {} failed for {}: {}", attempt, app_name, error_msg);
+            warn!(
+                "[kill_linglong_app] kill attempt {} failed for {}: {}",
+                attempt, app_name, error_msg
+            );
         }
 
         if attempt == 5 {
             // 最后一轮后再检查一次，仍在运行则返回错误
             let still_running = is_app_running(&app_name).await.unwrap_or(true);
             if still_running {
-                let err_msg = "请尝试手动停止应用。".to_string();
-                warn!("[kill_linglong_app] {}", err_msg);
-                return Err(err_msg);
+                warn!("[kill_linglong_app] error_msg: {}", error_msg);
+                if error_msg.is_empty() {
+                    error_msg = "未知错误".to_string();
+                }
+                return Err(error_msg.to_string());
             }
             break;
         }
