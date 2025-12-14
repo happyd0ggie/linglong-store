@@ -24,7 +24,9 @@ const BasicSetting = ()=>{
     changeBaseServiceStatus(!showBaseService)
   }
   const clearAbandonServiceClick = async() => {
-    if (isPruning) return
+    if (isPruning) {
+      return
+    }
 
     setIsPruning(true)
     try {

@@ -125,7 +125,18 @@ const AppDetail = () => {
         repoName,
         arch,
       })
-      const list = [...(res.data || [])]
+      let list = [...(res.data || [])]
+      // 对于同一版本，当存在多个 module 类型时，优先保留 binary 类型
+      // 过滤规则：同版本号存在两个及以上记录时，保留 module 为 binary 的记录，删除其他 module（如 runtime）
+      const uniqueData = new Map<string, VersionInfo>()
+      list.forEach(item => {
+        const key = `${item.appId}-${item.name}-${item.version}`
+        // 如果该键首次出现，或者当前项是 binary 且已存在的项不是 binary，则保留/替换
+        if (!uniqueData.has(key) || (item.module === 'binary' && uniqueData.get(key)?.module !== 'binary')) {
+          uniqueData.set(key, item)
+        }
+      })
+      list = Array.from(uniqueData.values())
       list.sort((a, b) => compareVersions(b.version || '', a.version || ''))
       setVersions(list)
     } catch (err) {
