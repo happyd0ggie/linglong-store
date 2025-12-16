@@ -26,7 +26,14 @@
 3. 工程优化，以工程化，能安全正常使用不出错为主，考虑周全，遵循越复杂越容易出错，越简单越容易可控原则，一个健康的系统 越简单越可控
 4. 遵循合理的组件化设计原则，要考虑组件复用性的可能。
 5. 在你发现架构不合理的时候，要及时的提出来。
-
+6. 编写代码的过程中，必须牢记以下几个原则：
+    - 开闭原则（Open Closed Principle，OCP）
+    - 单一职责原则（Single Responsibility Principle, SRP）
+    - 里氏代换原则（Liskov Substitution Principle，LSP）
+    - 依赖倒转原则（Dependency Inversion Principle，DIP）
+    - 接口隔离原则（Interface Segregation Principle，ISP）
+    - 合成/聚合复用原则（Composite/Aggregate Reuse Principle，CARP）
+    - 最少知识原则（Least Knowledge Principle，LKP）或者迪米特法则（Law of  Demeter，LOD）
 
 
 
