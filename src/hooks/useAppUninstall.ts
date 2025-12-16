@@ -84,15 +84,11 @@ export const useAppUninstall = () => {
         return false
       }
 
-      const confirmTitle = options?.confirmTitle ?? '确认卸载'
-      const confirmMessage =
-        options?.confirmMessage ??
-        `确认要卸载 ${appInfo.zhName || appInfo.name || appId} 的版本 ${version} 吗？`
-
       if (options?.skipConfirm) {
         return performUninstall(appId, version, appInfo, options)
       }
 
+      // 检查应用是否运行中
       const isRunning = await (async() => {
         try {
           const runningApps = await getRunningLinglongApps() as Array<{ name?: string }>
@@ -103,35 +99,27 @@ export const useAppUninstall = () => {
         }
       })()
 
-      if (isRunning) {
-        return new Promise<boolean>((resolve) => {
-          Modal.confirm({
-            title: `${appInfo.zhName || appInfo.name || appId}  正在运行`,
-            content: '是否强制关闭后继续卸载？',
-            okText: '强制关闭并卸载',
-            okButtonProps: { type: 'default' },
-            cancelText: '取消卸载',
-            cancelButtonProps: { type: 'primary' },
-            onOk: async() => {
-              try {
-                const result = await performUninstall(appId, version, appInfo, options)
-                resolve(result)
-              } catch (error) {
-                resolve(false)
-                console.error('Uninstall failed:', error)
-              }
-            },
-            onCancel: () => resolve(false),
-          })
-        })
-      }
+      // 根据运行状态构建弹窗配置
+      const appDisplayName = appInfo.zhName || appInfo.name || appId
+      const modalConfig = isRunning
+        ? {
+          title: `${appDisplayName} 正在运行`,
+          content: '应用正在运行，卸载会强制关闭，是否继续？',
+          okText: '强制关闭并卸载',
+        }
+        : {
+          title: options?.confirmTitle ?? '确认卸载',
+          content: options?.confirmMessage ?? `确认要卸载 ${appDisplayName} 的版本 ${version} 吗？`,
+          okText: '确认卸载',
+        }
 
+      // 统一的弹窗处理
       return new Promise<boolean>((resolve) => {
         Modal.confirm({
-          title: confirmTitle,
-          content: confirmMessage,
-          okText: '确认',
+          ...modalConfig,
           cancelText: '取消',
+          okButtonProps: { type: 'default' },
+          cancelButtonProps: { type: 'primary' },
           onOk: async() => {
             try {
               const result = await performUninstall(appId, version, appInfo, options)
