@@ -113,6 +113,17 @@ const AppDetail = () => {
 
   const hasInstalledVersion = useMemo(() => installedVersionSet.size > 0, [installedVersionSet])
 
+  // 无版本列表或已装最新时，主按钮走启动
+  const shouldRunInstalled = useMemo(() => {
+    if (isLatestVersionInstalled) {
+      return true
+    }
+    if (!latestVersion && hasInstalledVersion) {
+      return true
+    }
+    return false
+  }, [isLatestVersionInstalled, latestVersion, hasInstalledVersion])
+
   const loadVersions = async() => {
     if (!currentApp?.appId) {
       console.info('loadVersions: currentApp.appId is empty')
@@ -382,8 +393,8 @@ const AppDetail = () => {
     }
 
     // 如果已安装最新版本，则启动应用
-    if (isLatestVersionInstalled && latestVersion) {
-      console.info('[handleInstallBtnClick] 启动最新版本:', latestVersion)
+    if (shouldRunInstalled) {
+      console.info('[handleInstallBtnClick] 启动已安装版本')
       handleRun()
       return
     }
@@ -418,7 +429,7 @@ const AppDetail = () => {
                   loading={isInstalling}
                   disabled={isInstalling}
                 >
-                  {isInstalling ? '安装中...' : (isLatestVersionInstalled ? '启动' : (hasInstalledVersion ? '更新' : '安装'))}
+                  {isInstalling ? '安装中...' : (shouldRunInstalled ? '启动' : (hasInstalledVersion ? '更新' : '安装'))}
                 </Button>
                 {isInstalling && installProgress && (
                   <div style={{ marginTop: '12px', width: '100%' }}>
