@@ -38,7 +38,7 @@ const AppDetail = () => {
   const { uninstall } = useAppUninstall()
 
   // 使用安装队列
-  const { handleInstall, isAppInQueue, getInstallStatus } = useAppInstall()
+  const { handleInstall, getInstallStatus, getVersionInstallState } = useAppInstall()
   const { queue, currentTask } = useInstallQueueStore()
 
   // 获取当前应用的安装状态（从队列中）
@@ -313,8 +313,11 @@ const AppDetail = () => {
         const versionValue = versionInfo.version || ''
         const isInstalled = versionValue ? installedVersionSet.has(versionValue) : false
         const isUninstalling = uninstallingVersion === versionValue
-        // 检查该版本是否正在安装（通过队列状态）
-        const isRowInstalling = isAppInQueue(currentApp?.appId || '')
+        const installState = getVersionInstallState(currentApp?.appId || '', versionValue, latestVersion)
+        const isActiveInstalling = installState.isActiveVersion && installState.isInstalling
+        const isActivePending = installState.isActiveVersion && installState.isPending
+        const isAppInstallBusy = installState.isBusy
+        const shouldDisableForBusy = isAppInstallBusy && !installState.isActiveVersion
 
         if (!versionValue) {
           return '--'
@@ -339,7 +342,7 @@ const AppDetail = () => {
                 size='small'
                 onClick={() => handleUninstall(versionValue)}
                 loading={isUninstalling}
-                disabled={isRowInstalling}
+                disabled={isAppInstallBusy}
               >
                 卸载
               </Button>,
@@ -348,10 +351,10 @@ const AppDetail = () => {
                 type='primary'
                 size='small'
                 onClick={() => handleVersionInstall(versionInfo)}
-                loading={isRowInstalling}
-                disabled={isUninstalling || isInstalling}
+                loading={isActiveInstalling}
+                disabled={isUninstalling || isActivePending || isActiveInstalling || shouldDisableForBusy}
               >
-                安装
+                {isActiveInstalling ? '安装中...' : isActivePending ? '排队中' : '安装'}
               </Button>
             )}
           </Space>

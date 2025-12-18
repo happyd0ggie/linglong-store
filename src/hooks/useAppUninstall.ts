@@ -36,7 +36,7 @@ export const useAppUninstall = () => {
   const checkUpdates = useUpdatesStore(state => state.checkUpdates)
 
   const performUninstall = useCallback(
-    async (appId: string, version: string, appInfo?: BasicAppInfo, options?: UninstallOptions) => {
+    async(appId: string, version: string, appInfo?: BasicAppInfo, options?: UninstallOptions) => {
       try {
         await uninstallApp(appId, version)
 
@@ -75,7 +75,7 @@ export const useAppUninstall = () => {
   )
 
   const uninstall = useCallback(
-    async (appInfo: BasicAppInfo, options?: UninstallOptions) => {
+    async(appInfo: BasicAppInfo, options?: UninstallOptions) => {
       const appId = appInfo.appId || ''
       const version = appInfo.version || ''
 
@@ -89,7 +89,7 @@ export const useAppUninstall = () => {
       }
 
       // 检查应用是否运行中
-      const isRunning = await (async () => {
+      const isRunning = await (async() => {
         try {
           const runningApps = await getRunningLinglongApps() as Array<{ name?: string }>
           return runningApps.some(app => app.name === appId)
@@ -130,7 +130,7 @@ export const useAppUninstall = () => {
           cancelText: '取消',
           okButtonProps: { type: 'default' },
           cancelButtonProps: { type: 'primary' },
-          onOk: async () => {
+          onOk: async() => {
             try {
               const result = await performUninstall(appId, version, appInfo, options)
               resolve(result)

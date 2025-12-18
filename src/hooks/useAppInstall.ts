@@ -90,6 +90,16 @@ const confirmForceInstall = (appName: string): Promise<boolean> => {
   })
 }
 
+export interface VersionInstallState {
+  task: Store.InstallTask | null
+  status: Store.InstallTaskStatus | 'idle'
+  activeVersion: string | null
+  isActiveVersion: boolean
+  isPending: boolean
+  isInstalling: boolean
+  isBusy: boolean
+}
+
 export const useAppInstall = () => {
   const { enqueueInstall, enqueueBatch, isAppInQueue, getAppInstallStatus, currentTask, queue } =
     useInstallQueueStore()
@@ -169,6 +179,59 @@ export const useAppInstall = () => {
   )
 
   /**
+   * 获取特定版本的安装状态
+   * @param appId - 应用ID
+   * @param targetVersion - 需要关注的版本
+   * @param fallbackVersion - 当任务未携带版本信息时的兜底版本（通常用于“安装最新”场景）
+   */
+  const getVersionInstallState = useCallback(
+    (appId: string, targetVersion?: string, fallbackVersion?: string): VersionInstallState => {
+      if (!appId) {
+        return {
+          task: null,
+          status: 'idle',
+          activeVersion: null,
+          isActiveVersion: false,
+          isPending: false,
+          isInstalling: false,
+          isBusy: false,
+        }
+      }
+
+      const task = getAppInstallStatus(appId)
+      if (!task) {
+        return {
+          task: null,
+          status: 'idle',
+          activeVersion: null,
+          isActiveVersion: false,
+          isPending: false,
+          isInstalling: false,
+          isBusy: false,
+        }
+      }
+
+      const activeVersion = task.version || fallbackVersion || null
+      const status = task.status
+      const isPending = status === 'pending'
+      const isInstalling = status === 'installing'
+      const isBusy = isPending || isInstalling
+      const isActiveVersion = targetVersion ? activeVersion === targetVersion : !!activeVersion
+
+      return {
+        task,
+        status,
+        activeVersion,
+        isActiveVersion,
+        isPending,
+        isInstalling,
+        isBusy,
+      }
+    },
+    [getAppInstallStatus],
+  )
+
+  /**
    * 处理安装失败后的重试（带 force 选项）
    * @param app - 应用信息
    * @param errorMessage - 错误消息
@@ -215,6 +278,7 @@ export const useAppInstall = () => {
     isAppInQueue,
     /** 获取应用安装状态 */
     getInstallStatus: getAppInstallStatus,
+    /** 获取指定版本的安装状态 */
+    getVersionInstallState,
   }
 }
-
