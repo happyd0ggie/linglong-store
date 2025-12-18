@@ -36,7 +36,7 @@ export const useAppUninstall = () => {
   const checkUpdates = useUpdatesStore(state => state.checkUpdates)
 
   const performUninstall = useCallback(
-    async(appId: string, version: string, appInfo?: BasicAppInfo, options?: UninstallOptions) => {
+    async (appId: string, version: string, appInfo?: BasicAppInfo, options?: UninstallOptions) => {
       try {
         await uninstallApp(appId, version)
 
@@ -75,7 +75,7 @@ export const useAppUninstall = () => {
   )
 
   const uninstall = useCallback(
-    async(appInfo: BasicAppInfo, options?: UninstallOptions) => {
+    async (appInfo: BasicAppInfo, options?: UninstallOptions) => {
       const appId = appInfo.appId || ''
       const version = appInfo.version || ''
 
@@ -89,7 +89,7 @@ export const useAppUninstall = () => {
       }
 
       // 检查应用是否运行中
-      const isRunning = await (async() => {
+      const isRunning = await (async () => {
         try {
           const runningApps = await getRunningLinglongApps() as Array<{ name?: string }>
           return runningApps.some(app => app.name === appId)
@@ -101,17 +101,27 @@ export const useAppUninstall = () => {
 
       // 根据运行状态构建弹窗配置
       const appDisplayName = appInfo.zhName || appInfo.name || appId
-      const modalConfig = isRunning
-        ? {
-          title: `${appDisplayName} 正在运行`,
-          content: '应用正在运行，卸载会强制关闭，是否继续？',
-          okText: '强制关闭并卸载',
-        }
-        : {
-          title: options?.confirmTitle ?? '确认卸载',
-          content: options?.confirmMessage ?? `确认要卸载 ${appDisplayName} 的版本 ${version} 吗？`,
+      let modalConfig = {}
+      if (options?.confirmTitle || options?.confirmMessage) {
+        modalConfig = {
+          title: options.confirmTitle,
+          content: options.confirmMessage,
           okText: '确认卸载',
         }
+      } else {
+        modalConfig = isRunning
+          ? {
+            title: `${appDisplayName} 正在运行`,
+            content: '应用正在运行，卸载会强制关闭，是否继续？',
+            okText: '强制关闭并卸载',
+          }
+          : {
+            title: '确认卸载',
+            content: `确认要卸载 ${appDisplayName} 的版本 ${version} 吗？`,
+            okText: '确认卸载',
+          }
+      }
+
 
       // 统一的弹窗处理
       return new Promise<boolean>((resolve) => {
@@ -120,7 +130,7 @@ export const useAppUninstall = () => {
           cancelText: '取消',
           okButtonProps: { type: 'default' },
           cancelButtonProps: { type: 'primary' },
-          onOk: async() => {
+          onOk: async () => {
             try {
               const result = await performUninstall(appId, version, appInfo, options)
               resolve(result)
