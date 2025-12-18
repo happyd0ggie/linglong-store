@@ -66,7 +66,7 @@ const Process = () => {
       // 构建进入容器的命令
       // 不再使用唤起终端功能，因为好多个发行版，每个发行版使用的终端不一样，不同用户想使用的终端也不一样
       // 所以把这个选择权交给用户，让用户自己去粘贴到喜欢的终端
-      const command = `ll-cli exec ${record.name} /bin/bash`
+      const command = `ll-cli enter ${record.name} `
 
       // 复制命令到剪贴板
       await navigator.clipboard.writeText(command)
