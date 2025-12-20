@@ -1,5 +1,7 @@
 mod services;
 
+use tauri::Manager;
+
 use log::LevelFilter;
 use services::network::{get_network_speed as network_get_speed, NetworkSpeed};
 use services::process::{get_running_linglong_apps as process_get_running_apps, kill_linglong_app as process_kill_app, LinglongAppInfo};
@@ -110,6 +112,13 @@ async fn prune_apps() -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(LevelFilter::Info)
