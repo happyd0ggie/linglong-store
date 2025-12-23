@@ -58,7 +58,7 @@ jobs:
             -e RUSTUP_HOME=/workspace/.rustup \
             node:20-bookworm \
             bash -c "
-              export PATH=\"$CARGO_HOME/bin:$PATH\" && \
+              export PATH=\"\$CARGO_HOME/bin:\$PATH\" && \
               # 安装系统依赖
               apt-get update && \
               apt-get install -y \
@@ -78,7 +78,7 @@ jobs:
               
               # 安装 Rust
               curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-              . \"$CARGO_HOME/env\" && \
+              . \"\$CARGO_HOME/env\" && \
               
               # 安装 pnpm
               corepack enable && \
