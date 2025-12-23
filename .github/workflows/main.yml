@@ -67,16 +67,28 @@ jobs:
               
               # 安装前端依赖
               pnpm install --frozen-lockfile && \
-              
-              # 构建
               pnpm build:pro
             "
+
+      - name: Prepare raw binary (no version)
+        run: |
+          set -euo pipefail
+          BIN_PATH="src-tauri/target/release/linglong-store"
+          if [ ! -f "$BIN_PATH" ]; then
+            echo "Binary not found: $BIN_PATH" >&2
+            exit 1
+          fi
+
+          mkdir -p release-bin
+          cp -f "$BIN_PATH" "release-bin/linglong-store-${{ matrix.arch }}"
+          chmod +x "release-bin/linglong-store-${{ matrix.arch }}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linglong-store-${{ matrix.arch }}
           path: |
+            release-bin/linglong-store-${{ matrix.arch }}
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/rpm/*.rpm
@@ -130,6 +142,7 @@ jobs:
           draft: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           files: |
+            artifacts/**/release-bin/linglong-store-*
             artifacts/**/*.AppImage
             artifacts/**/*.deb
             artifacts/**/*.rpm
