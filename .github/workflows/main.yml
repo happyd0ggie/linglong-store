@@ -1,9 +1,12 @@
 name: Release
+run-name: Release ${{ inputs.tag }}
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. 2.0.1) Please follow Semantic Versioning specifications.'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -21,6 +24,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up QEMU (for ARM64 cross-compilation)
         if: matrix.arch == 'arm64'
@@ -122,6 +127,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -133,23 +140,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
-          name: '玲珑应用商店 v${{ github.ref_name }}'
+          tag_name: ${{ inputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: '玲珑应用商店社区版 v${{ inputs.tag }}'
           body: |
-            ## 玲珑应用商店 ${{ github.ref_name }}
+            ## 玲珑应用商店社区版 ${{ inputs.tag }}
             
             ### 下载安装
             请根据您的 Linux 发行版和 CPU 架构选择对应的安装包：
             
             #### x86_64 (AMD64)
-            - 🔹 `*-amd64.AppImage` / `*-x86_64.AppImage` - 通用格式，下载后添加可执行权限即可运行
-            - 🔹 `*_amd64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
-            - 🔹 `*-amd64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+             🔹 `*-amd64.AppImage` / `*-x86_64.AppImage` - 通用格式，下载后添加可执行权限即可运行
+             🔹 `*_amd64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
+             🔹 `*-amd64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+             🔹 `linglong-store-amd64` - 原始可执行文件
             
             #### ARM64 (aarch64)
-            - 🔹 `*-arm64.AppImage` / `*-aarch64.AppImage` - 通用格式，下载后添加可执行权限即可运行
-            - 🔹 `*_arm64.deb` / `*_aarch64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
-            - 🔹 `*-arm64.rpm` / `*-aarch64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+             🔹 `*-arm64.AppImage` / `*-aarch64.AppImage` - 通用格式，下载后添加可执行权限即可运行
+             🔹 `*_arm64.deb` / `*_aarch64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
+             🔹 `*-arm64.rpm` / `*-aarch64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+             🔹 `linglong-store-arm64` - 原始可执行文件
             
             ### 系统要求
             - Linux 操作系统（支持 x86_64 和 ARM64）
@@ -157,10 +167,8 @@ jobs:
             - GTK 3.0+
             - WebKit2GTK 4.1+
             
-            ### 更新日志
-            详见 [CHANGELOG](https://github.com/SXFreell/linglong-store/releases/tag/${{ github.ref_name }})
           draft: true
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          prerelease: ${{ contains(inputs.tag, 'alpha') || contains(inputs.tag, 'beta') || contains(inputs.tag, 'rc') }}
           files: |
             artifacts/**/release-bin/*
             artifacts/**/release-appimage/*
