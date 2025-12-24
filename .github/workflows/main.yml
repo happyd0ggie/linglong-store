@@ -9,47 +9,36 @@ jobs:
   release:
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: ubuntu-22.04
-            arch: amd64
-            docker-platform: linux/amd64
-          # Use native ARM runner (no QEMU).
-          - platform: ubuntu-22.04-arm64
-            arch: arm64
-            docker-platform: linux/arm64
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Cache Rust (cargo + rustup + target)
+      - name: Set up QEMU (for ARM64 cross-compilation)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Rust and pnpm
         uses: actions/cache@v4
         with:
           path: |
             .cargo
             .rustup
-            src-tauri/target
-          key: ${{ runner.os }}-${{ matrix.arch }}-rust-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'Cargo.lock', 'Cargo.toml') }}
+            .pnpm-store
+          key: ${{ runner.os }}-build-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'Cargo.lock', 'Cargo.toml', 'pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-rust-
+            ${{ runner.os }}-build-
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: .pnpm-store
-          key: ${{ runner.os }}-${{ matrix.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-pnpm-
-
-      - name: Build in Docker
+      - name: Build for AMD64
         run: |
-          mkdir -p .cargo .rustup .pnpm-store
+          mkdir -p .cargo .rustup .pnpm-store build-output/amd64
           docker run --rm \
-            --platform ${{ matrix.docker-platform }} \
+            --platform linux/amd64 \
             -v $(pwd):/workspace \
             -w /workspace \
             -e NODE_ENV=pro \
@@ -89,29 +78,97 @@ jobs:
               pnpm install --frozen-lockfile && \
               pnpm build:pro
             "
+          
+          # 拷贝amd64构建产物
+          [ -f src-tauri/target/release/linglong-store ] && cp src-tauri/target/release/linglong-store build-output/amd64/ || true
+          find src-tauri/target/release/bundle -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \) -exec cp {} build-output/amd64/ \; 2>/dev/null || true
 
-      - name: Prepare raw binary (no version)
+      - name: Clean and prepare for ARM64
+        run: |
+          rm -rf src-tauri/target/release
+          mkdir -p build-output/arm64
+
+      - name: Build for ARM64 (QEMU)
+        run: |
+          docker run --rm \
+            --platform linux/arm64 \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            -e NODE_ENV=pro \
+            -e DEBIAN_FRONTEND=noninteractive \
+            -e CARGO_HOME=/workspace/.cargo \
+            -e RUSTUP_HOME=/workspace/.rustup \
+            node:20-bookworm \
+            bash -c "
+              export PATH=\"\$CARGO_HOME/bin:\$PATH\" && \
+              # 安装系统依赖
+              apt-get update && \
+              apt-get install -y \
+                curl \
+                wget \
+                file \
+                libgtk-3-dev \
+                libwebkit2gtk-4.1-dev \
+                libjavascriptcoregtk-4.1-dev \
+                libsoup-3.0-dev \
+                libayatana-appindicator3-dev \
+                librsvg2-dev \
+                patchelf \
+                pkg-config \
+                build-essential \
+                xdg-utils && \
+              
+              # Rust 已经在构建系统中，使用现有安装
+              export PATH=\"\$CARGO_HOME/bin:\$PATH\" && \
+              
+              # 安装 pnpm（已在amd64构建中安装）
+              corepack enable && \
+              corepack prepare pnpm@9 --activate && \
+              
+              # 安装前端依赖（使用缓存）
+              pnpm config set store-dir /workspace/.pnpm-store && \
+              pnpm install --frozen-lockfile && \
+              pnpm build:pro
+            "
+          
+          # 拷贝arm64构建产物
+          [ -f src-tauri/target/release/linglong-store ] && cp src-tauri/target/release/linglong-store build-output/arm64/ || true
+          find src-tauri/target/release/bundle -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \) -exec cp {} build-output/arm64/ \; 2>/dev/null || true
+
+      - name: Prepare release artifacts
         run: |
           set -euo pipefail
-          BIN_PATH="src-tauri/target/release/linglong-store"
-          if [ ! -f "$BIN_PATH" ]; then
-            echo "Binary not found: $BIN_PATH" >&2
-            exit 1
-          fi
-
-          mkdir -p release-bin
-          cp -f "$BIN_PATH" "release-bin/linglong-store-${{ matrix.arch }}"
-          chmod +x "release-bin/linglong-store-${{ matrix.arch }}"
+          mkdir -p release-bin release-appimage release-deb release-rpm
+          
+          # 处理 amd64 产物
+          [ -f build-output/amd64/linglong-store ] && cp build-output/amd64/linglong-store release-bin/linglong-store-amd64 && chmod +x release-bin/linglong-store-amd64 || true
+          [ -f build-output/amd64/linglong-store ] && cp build-output/amd64/linglong-store release-bin/linglong-store-x86_64 && chmod +x release-bin/linglong-store-x86_64 || true
+          find build-output/amd64 -maxdepth 1 -name "*.AppImage" -exec cp {} release-appimage/ \; 2>/dev/null || true
+          find build-output/amd64 -maxdepth 1 -name "*_amd64.deb" -exec cp {} release-deb/ \; 2>/dev/null || true
+          find build-output/amd64 -maxdepth 1 -name "*.rpm" -exec cp {} release-rpm/ \; 2>/dev/null || true
+          
+          # 处理 arm64 产物
+          [ -f build-output/arm64/linglong-store ] && cp build-output/arm64/linglong-store release-bin/linglong-store-arm64 && chmod +x release-bin/linglong-store-arm64 || true
+          [ -f build-output/arm64/linglong-store ] && cp build-output/arm64/linglong-store release-bin/linglong-store-aarch64 && chmod +x release-bin/linglong-store-aarch64 || true
+          find build-output/arm64 -maxdepth 1 -name "*.AppImage" -exec cp {} release-appimage/ \; 2>/dev/null || true
+          find build-output/arm64 -maxdepth 1 -name "*_arm64.deb" -o -name "*_aarch64.deb" -exec cp {} release-deb/ \; 2>/dev/null || true
+          find build-output/arm64 -maxdepth 1 -name "*.rpm" -exec cp {} release-rpm/ \; 2>/dev/null || true
+          
+          echo "AMD64 binaries:" && ls -la release-bin/linglong-store-* 2>/dev/null || echo "No binaries found"
+          echo "AppImage files:" && ls -la release-appimage/ 2>/dev/null || echo "No AppImage found"
+          echo "Deb files:" && ls -la release-deb/ 2>/dev/null || echo "No Deb found"
+          echo "RPM files:" && ls -la release-rpm/ 2>/dev/null || echo "No RPM found"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linglong-store-${{ matrix.arch }}
+          name: linglong-store-release
           path: |
-            release-bin/linglong-store-${{ matrix.arch }}
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/rpm/*.rpm
+            release-bin/linglong-store-*
+            release-appimage/*.AppImage
+            release-deb/*.deb
+            release-rpm/*.rpm
+          if-no-files-found: warn
 
   create-release:
     needs: release
@@ -142,14 +199,14 @@ jobs:
             请根据您的 Linux 发行版和 CPU 架构选择对应的安装包：
             
             #### x86_64 (AMD64)
-            - 🔹 `*-amd64.AppImage` - 通用格式，下载后添加可执行权限即可运行
+            - 🔹 `*-amd64.AppImage` / `*-x86_64.AppImage` - 通用格式，下载后添加可执行权限即可运行
             - 🔹 `*_amd64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
             - 🔹 `*-amd64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
             
             #### ARM64 (aarch64)
-            - 🔹 `*-arm64.AppImage` - 通用格式，下载后添加可执行权限即可运行
-            - 🔹 `*_arm64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
-            - 🔹 `*-arm64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+            - 🔹 `*-arm64.AppImage` / `*-aarch64.AppImage` - 通用格式，下载后添加可执行权限即可运行
+            - 🔹 `*_arm64.deb` / `*_aarch64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
+            - 🔹 `*-arm64.rpm` / `*-aarch64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
             
             ### 系统要求
             - Linux 操作系统（支持 x86_64 和 ARM64）
@@ -162,7 +219,4 @@ jobs:
           draft: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           files: |
-            artifacts/**/release-bin/linglong-store-*
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/*.rpm
+            artifacts/**/linglong-store-release/*
