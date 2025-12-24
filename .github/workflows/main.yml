@@ -10,12 +10,20 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            docker-platform: linux/amd64
+          - arch: arm64
+            docker-platform: linux/arm64
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up QEMU (for ARM64 cross-compilation)
+        if: matrix.arch == 'arm64'
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
@@ -23,22 +31,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Cache Rust and pnpm
+      - name: Cache Rust, pnpm, and target
         uses: actions/cache@v4
         with:
           path: |
             .cargo
             .rustup
             .pnpm-store
-          key: ${{ runner.os }}-build-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'Cargo.lock', 'Cargo.toml', 'pnpm-lock.yaml') }}
+            src-tauri/target
+          key: ${{ runner.os }}-${{ matrix.arch }}-build-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/Cargo.toml', 'Cargo.lock', 'Cargo.toml', 'pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-build-
+            ${{ runner.os }}-${{ matrix.arch }}-build-
 
-      - name: Build for AMD64
+      - name: Build for ${{ matrix.arch }}
         run: |
-          mkdir -p .cargo .rustup .pnpm-store build-output/amd64
+          mkdir -p .cargo .rustup .pnpm-store
           docker run --rm \
-            --platform linux/amd64 \
+            --platform ${{ matrix.docker-platform }} \
             -v $(pwd):/workspace \
             -w /workspace \
             -e NODE_ENV=pro \
@@ -64,107 +73,41 @@ jobs:
                 pkg-config \
                 build-essential \
                 xdg-utils && \
-              
+              \
               # 安装 Rust
               curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
               . \"\$CARGO_HOME/env\" && \
-              
+              \
               # 安装 pnpm
               corepack enable && \
               corepack prepare pnpm@9 --activate && \
-              
+              \
               # 安装前端依赖
               pnpm config set store-dir /workspace/.pnpm-store && \
               pnpm install --frozen-lockfile && \
               pnpm build:pro
             "
-          
-          # 拷贝amd64构建产物
-          [ -f src-tauri/target/release/linglong-store ] && cp src-tauri/target/release/linglong-store build-output/amd64/ || true
-          find src-tauri/target/release/bundle -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \) -exec cp {} build-output/amd64/ \; 2>/dev/null || true
 
-      - name: Clean and prepare for ARM64
-        run: |
-          rm -rf src-tauri/target/release
-          mkdir -p build-output/arm64
-
-      - name: Build for ARM64 (QEMU)
-        run: |
-          docker run --rm \
-            --platform linux/arm64 \
-            -v $(pwd):/workspace \
-            -w /workspace \
-            -e NODE_ENV=pro \
-            -e DEBIAN_FRONTEND=noninteractive \
-            -e CARGO_HOME=/workspace/.cargo \
-            -e RUSTUP_HOME=/workspace/.rustup \
-            node:20-bookworm \
-            bash -c "
-              export PATH=\"\$CARGO_HOME/bin:\$PATH\" && \
-              # 安装系统依赖
-              apt-get update && \
-              apt-get install -y \
-                curl \
-                wget \
-                file \
-                libgtk-3-dev \
-                libwebkit2gtk-4.1-dev \
-                libjavascriptcoregtk-4.1-dev \
-                libsoup-3.0-dev \
-                libayatana-appindicator3-dev \
-                librsvg2-dev \
-                patchelf \
-                pkg-config \
-                build-essential \
-                xdg-utils && \
-              
-              # Rust 已经在构建系统中，使用现有安装
-              export PATH=\"\$CARGO_HOME/bin:\$PATH\" && \
-              
-              # 安装 pnpm（已在amd64构建中安装）
-              corepack enable && \
-              corepack prepare pnpm@9 --activate && \
-              
-              # 安装前端依赖（使用缓存）
-              pnpm config set store-dir /workspace/.pnpm-store && \
-              pnpm install --frozen-lockfile && \
-              pnpm build:pro
-            "
-          
-          # 拷贝arm64构建产物
-          [ -f src-tauri/target/release/linglong-store ] && cp src-tauri/target/release/linglong-store build-output/arm64/ || true
-          find src-tauri/target/release/bundle -type f \( -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' \) -exec cp {} build-output/arm64/ \; 2>/dev/null || true
-
-      - name: Prepare release artifacts
+      - name: Collect artifacts for ${{ matrix.arch }}
         run: |
           set -euo pipefail
           mkdir -p release-bin release-appimage release-deb release-rpm
-          
-          # 处理 amd64 产物
-          [ -f build-output/amd64/linglong-store ] && cp build-output/amd64/linglong-store release-bin/linglong-store-amd64 && chmod +x release-bin/linglong-store-amd64 || true
-          [ -f build-output/amd64/linglong-store ] && cp build-output/amd64/linglong-store release-bin/linglong-store-x86_64 && chmod +x release-bin/linglong-store-x86_64 || true
-          find build-output/amd64 -maxdepth 1 -name "*.AppImage" -exec cp {} release-appimage/ \; 2>/dev/null || true
-          find build-output/amd64 -maxdepth 1 -name "*_amd64.deb" -exec cp {} release-deb/ \; 2>/dev/null || true
-          find build-output/amd64 -maxdepth 1 -name "*.rpm" -exec cp {} release-rpm/ \; 2>/dev/null || true
-          
-          # 处理 arm64 产物
-          [ -f build-output/arm64/linglong-store ] && cp build-output/arm64/linglong-store release-bin/linglong-store-arm64 && chmod +x release-bin/linglong-store-arm64 || true
-          [ -f build-output/arm64/linglong-store ] && cp build-output/arm64/linglong-store release-bin/linglong-store-aarch64 && chmod +x release-bin/linglong-store-aarch64 || true
-          find build-output/arm64 -maxdepth 1 -name "*.AppImage" -exec cp {} release-appimage/ \; 2>/dev/null || true
-          find build-output/arm64 -maxdepth 1 -name "*_arm64.deb" -o -name "*_aarch64.deb" -exec cp {} release-deb/ \; 2>/dev/null || true
-          find build-output/arm64 -maxdepth 1 -name "*.rpm" -exec cp {} release-rpm/ \; 2>/dev/null || true
-          
-          echo "AMD64 binaries:" && ls -la release-bin/linglong-store-* 2>/dev/null || echo "No binaries found"
-          echo "AppImage files:" && ls -la release-appimage/ 2>/dev/null || echo "No AppImage found"
-          echo "Deb files:" && ls -la release-deb/ 2>/dev/null || echo "No Deb found"
-          echo "RPM files:" && ls -la release-rpm/ 2>/dev/null || echo "No RPM found"
+          BIN_TARGET="release-bin/linglong-store-${{ matrix.arch }}"
+          if [ -f src-tauri/target/release/linglong-store ]; then
+            cp src-tauri/target/release/linglong-store "$BIN_TARGET"
+            chmod +x "$BIN_TARGET"
+          fi
+          find src-tauri/target/release/bundle -maxdepth 2 -type f -name "*.AppImage" -exec cp {} release-appimage/ \; 2>/dev/null || true
+          find src-tauri/target/release/bundle -maxdepth 2 -type f -name "*.deb" -exec cp {} release-deb/ \; 2>/dev/null || true
+          find src-tauri/target/release/bundle -maxdepth 2 -type f -name "*.rpm" -exec cp {} release-rpm/ \; 2>/dev/null || true
+          ls -la release-bin || true
 
-      - name: Upload artifacts
+      - name: Upload artifacts (${matrix.arch})
         uses: actions/upload-artifact@v4
         with:
-          name: linglong-store-release
+          name: linglong-store-${{ matrix.arch }}
           path: |
-            release-bin/linglong-store-*
+            release-bin/linglong-store-${{ matrix.arch }}
             release-appimage/*.AppImage
             release-deb/*.deb
             release-rpm/*.rpm
@@ -219,4 +162,7 @@ jobs:
           draft: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           files: |
-            artifacts/**/linglong-store-release/*
+            artifacts/**/release-bin/*
+            artifacts/**/release-appimage/*
+            artifacts/**/release-deb/*
+            artifacts/**/release-rpm/*
