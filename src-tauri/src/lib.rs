@@ -1,4 +1,5 @@
 mod services;
+mod webkit_dmabuf;
 
 use tauri::Manager;
 
@@ -111,6 +112,13 @@ async fn prune_apps() -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let did_auto_disable_dmabuf = if webkit_dmabuf::should_disable_webkit_dmabuf_renderer() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        true
+    } else {
+        false
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -137,7 +145,12 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_zustand::init())
-        .setup(|app| {
+        .setup(move |app| {
+            if did_auto_disable_dmabuf {
+                log::warn!(
+                    "[webview] Auto fallback enabled: WEBKIT_DISABLE_DMABUF_RENDERER=1 (missing or inaccessible /dev/dri)"
+                );
+            }
             modules::tray::setup_tray(app.handle())?;
             Ok(())
         })
