@@ -22,14 +22,36 @@ declare namespace API {
       occurrenceNumber?: number;
     }
 
+    /**
+     * 安装进度事件类型
+     * - "progress": 进度更新事件
+     * - "error": 错误事件
+     * - "message": 消息事件
+     */
+    type InstallEventType = 'progress' | 'error' | 'message';
+
+    /**
+     * 安装进度事件（统一的 install-progress 事件结构）
+     * 根据 eventType 区分不同类型的事件
+     */
     interface InstallProgress {
-      appId: string; // 应用ID
-      progress: string; // 原始进度文本
-      percentage: number; // 百分比数值 (0-100)
-      status: string; // 状态描述
+      /** 应用ID */
+      appId: string;
+      /** 事件类型: "progress" | "error" | "message" */
+      eventType: InstallEventType;
+      /** 原始消息文本 */
+      message: string;
+      /** 百分比数值 (0-100)，仅 progress 事件有效 */
+      percentage: number;
+      /** 状态描述（用户友好的状态文本） */
+      status: string;
+      /** 错误码，仅 error 事件有效 */
+      code?: number;
+      /** 错误详情（后端原始消息），用于折叠展示 */
+      errorDetail?: string;
     }
 
-    // 安装取消事件
+    // 安装取消事件（保留兼容，但建议使用 InstallProgress 的 error 类型）
     interface InstallCancelled {
       appId: string; // 应用ID
       cancelled: boolean; // 是否已取消

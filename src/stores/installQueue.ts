@@ -199,7 +199,7 @@ export const useInstallQueueStore = create<Store.InstallQueue>((set, get) => ({
     setTimeout(() => get().processQueue(), 100)
   },
 
-  markFailed: (appId, error) => {
+  markFailed: (appId, error, errorCode, errorDetail) => {
     const state = get()
 
     if (state.currentTask?.appId !== appId) {
@@ -210,8 +210,10 @@ export const useInstallQueueStore = create<Store.InstallQueue>((set, get) => ({
     const failedTask: Store.InstallTask = {
       ...state.currentTask,
       status: 'failed',
-      message: '安装失败',
+      message: error || '安装失败',
       error,
+      errorCode,
+      errorDetail,
       finishedAt: Date.now(),
     }
 
@@ -224,7 +226,7 @@ export const useInstallQueueStore = create<Store.InstallQueue>((set, get) => ({
     // 清除持久化
     localStorage.removeItem(CURRENT_TASK_STORAGE_KEY)
 
-    console.error(`[InstallQueue] Task failed: ${appId}, error: ${error}`)
+    console.error(`[InstallQueue] Task failed: ${appId}, error: ${error}, code: ${errorCode}`)
 
     // 继续处理下一个任务（失败不阻塞队列）
     setTimeout(() => get().processQueue(), 100)

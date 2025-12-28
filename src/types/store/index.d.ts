@@ -159,6 +159,10 @@ declare namespace Store {
     message: string
     /** 错误信息（如果失败） */
     error?: string
+    /** 错误码（如果失败） */
+    errorCode?: number
+    /** 错误详情（后端原始消息，用于折叠展示） */
+    errorDetail?: string
     /** 入队时间戳 */
     createdAt: number
     /** 开始安装时间戳 */
@@ -224,8 +228,10 @@ declare namespace Store {
      * 标记当前任务失败
      * @param appId - 应用ID
      * @param error - 错误信息
+     * @param errorCode - 错误码（可选）
+     * @param errorDetail - 错误详情（可选）
      */
-    markFailed: (appId: string, error: string) => void
+    markFailed: (appId: string, error: string, errorCode?: number, errorDetail?: string) => void
 
     /**
      * 清空历史记录

@@ -1,4 +1,3 @@
-use portable_pty::CommandBuilder;
 use std::process::Command;
 
 pub mod network;
@@ -21,22 +20,9 @@ fn apply_english_locale_env_to_command(cmd: &mut Command) {
     }
 }
 
-fn apply_english_locale_env_to_command_builder(cmd: &mut CommandBuilder) {
-    for (key, value) in ENGLISH_LOCALE_ENV {
-        cmd.env(key, value);
-    }
-}
-
 /// Create an ll-cli Command with English locale enforced.
 pub fn ll_cli_command() -> Command {
     let mut cmd = Command::new("ll-cli");
     apply_english_locale_env_to_command(&mut cmd);
-    cmd
-}
-
-/// Create an ll-cli CommandBuilder (for PTY) with English locale enforced.
-pub fn ll_cli_pty_command() -> CommandBuilder {
-    let mut cmd = CommandBuilder::new("ll-cli");
-    apply_english_locale_env_to_command_builder(&mut cmd);
     cmd
 }

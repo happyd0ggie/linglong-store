@@ -1,20 +1,186 @@
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::{Read, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::io::{BufRead, BufReader};
+use std::process::{Child, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
-use portable_pty::{native_pty_system, PtySize, Child};
 use once_cell::sync::Lazy;
 use crate::services::process::kill_linglong_app;
-use crate::services::{ll_cli_command, ll_cli_pty_command};
+use crate::services::ll_cli_command;
 
-// 全局进程管理器，存储正在进行的安装进程
-// 使用 Arc<Mutex<Box<dyn Child + Send + Sync>>> 来共享进程所有权
-static INSTALL_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Arc<Mutex<Box<dyn Child + Send + Sync>>>>>>> =
+// ==================== 常量定义 ====================
+
+/// 进度超时时间（秒）- 60秒无进度更新则判定失败
+const PROGRESS_TIMEOUT_SECS: u64 = 60;
+
+// ==================== 全局进程管理器 ====================
+
+/// 全局进程管理器，存储正在进行的安装进程
+/// 使用标准库的 Child 进程，通过 stdout 管道读取 JSON 输出
+static INSTALL_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Arc<Mutex<Child>>>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
+
+// ==================== 安装状态机 ====================
+
+/// 安装状态枚举
+#[derive(Debug, Clone, PartialEq)]
+pub enum InstallState {
+    /// 空闲状态
+    Idle,
+    /// 等待安装（已启动进程但未收到进度百分比）
+    Waiting,
+    /// 安装中（已收到进度百分比）
+    Installing,
+    /// 安装成功
+    Succeeded,
+    /// 安装失败
+    Failed,
+}
+
+/// 安装状态机
+/// 负责管理安装过程中的状态转换
+pub struct InstallStateMachine {
+    pub state: InstallState,
+    pub last_progress_at: Instant,
+    pub last_percentage: f32,
+}
+
+impl InstallStateMachine {
+    pub fn new() -> Self {
+        Self {
+            state: InstallState::Idle,
+            last_progress_at: Instant::now(),
+            last_percentage: 0.0,
+        }
+    }
+
+    /// 开始安装，进入 WAITING 状态
+    pub fn start(&mut self) {
+        self.state = InstallState::Waiting;
+        self.last_progress_at = Instant::now();
+        self.last_percentage = 0.0;
+        info!("[StateMachine] State: Idle -> Waiting");
+    }
+
+    /// 收到进度事件，进入/保持 INSTALLING 状态
+    pub fn on_progress(&mut self, percentage: f32) {
+        if self.state == InstallState::Waiting {
+            info!("[StateMachine] State: Waiting -> Installing");
+        }
+        self.state = InstallState::Installing;
+        self.last_progress_at = Instant::now();
+        self.last_percentage = percentage;
+    }
+
+    /// 收到错误事件，进入 FAILED 状态
+    pub fn on_error(&mut self) {
+        info!("[StateMachine] State: {:?} -> Failed (ErrorEvent)", self.state);
+        self.state = InstallState::Failed;
+    }
+
+    /// 进程正常退出（exit code 0），进入 SUCCEEDED 状态
+    pub fn on_success(&mut self) {
+        info!("[StateMachine] State: {:?} -> Succeeded", self.state);
+        self.state = InstallState::Succeeded;
+    }
+
+    /// 进程异常退出或超时，进入 FAILED 状态
+    pub fn on_failure(&mut self) {
+        info!("[StateMachine] State: {:?} -> Failed", self.state);
+        self.state = InstallState::Failed;
+    }
+
+    /// 检查是否超时（60秒无进度更新）
+    pub fn check_timeout(&self) -> bool {
+        if self.state == InstallState::Waiting || self.state == InstallState::Installing {
+            return self.last_progress_at.elapsed().as_secs() > PROGRESS_TIMEOUT_SECS;
+        }
+        false
+    }
+}
+
+// ==================== JSON 解析结构 ====================
+
+/// ll-cli --json 输出的事件类型
+#[derive(Debug, Clone, PartialEq)]
+pub enum JsonEventType {
+    /// 进度事件（包含 percentage）
+    Progress,
+    /// 错误事件（包含 code）
+    Error,
+    /// 消息事件（仅包含 message）
+    Message,
+}
+
+/// ll-cli --json 输出的原始 JSON 结构
+#[derive(Debug, Deserialize)]
+struct LLCliJsonOutput {
+    message: Option<String>,
+    percentage: Option<f64>,
+    code: Option<i32>,
+}
+
+/// 解析后的 JSON 事件
+#[derive(Debug, Clone)]
+pub struct ParsedJsonEvent {
+    pub event_type: JsonEventType,
+    pub message: String,
+    pub percentage: Option<f32>,
+    pub code: Option<i32>,
+}
+
+/// 解析 ll-cli --json 输出的单行 JSON
+/// 根据字段判断事件类型：
+/// - 包含 code -> ErrorEvent
+/// - 包含 percentage -> ProgressEvent  
+/// - 仅包含 message -> MessageEvent
+pub fn parse_json_line(line: &str) -> Option<ParsedJsonEvent> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // 尝试解析为 JSON
+    let json_output: LLCliJsonOutput = match serde_json::from_str(trimmed) {
+        Ok(parsed) => parsed,
+        Err(e) => {
+            // 非 JSON 行，记录日志但不影响状态
+            warn!("[JsonParser] Non-JSON line (ignored): {} - Error: {}", trimmed, e);
+            return None;
+        }
+    };
+
+    let message = json_output.message.unwrap_or_default();
+
+    // 根据字段判断事件类型
+    if let Some(code) = json_output.code {
+        // ErrorEvent: 包含 code 字段
+        Some(ParsedJsonEvent {
+            event_type: JsonEventType::Error,
+            message,
+            percentage: None,
+            code: Some(code),
+        })
+    } else if let Some(pct) = json_output.percentage {
+        // ProgressEvent: 包含 percentage 字段
+        Some(ParsedJsonEvent {
+            event_type: JsonEventType::Progress,
+            message,
+            percentage: Some(pct as f32),
+            code: None,
+        })
+    } else {
+        // MessageEvent: 仅包含 message
+        Some(ParsedJsonEvent {
+            event_type: JsonEventType::Message,
+            message,
+            percentage: None,
+            code: None,
+        })
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -285,354 +451,366 @@ pub async fn run_linglong_app(app_id: String) -> Result<String, String> {
     // 立即返回，不等待后台线程/子进程结束
     Ok(format!("Successfully launched {}", app_id))
 }
-/// 安装进度事件数据结构
+
+// ==================== 安装进度事件 ====================
+
+/// 安装进度事件数据结构（统一的 install-progress 事件）
+/// 根据 eventType 区分不同类型的事件：
+/// - "progress": 进度更新事件
+/// - "error": 错误事件
+/// - "message": 消息事件
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallProgress {
-        pub app_id: String,
-        pub progress: String,      // 原始进度文本
-        pub percentage: u32,        // 百分比数值 (0-100)
-        pub status: String,         // 状态描述
+    /// 应用ID
+    pub app_id: String,
+    /// 事件类型: "progress" | "error" | "message"
+    pub event_type: String,
+    /// 原始消息文本
+    pub message: String,
+    /// 百分比数值 (0-100)，仅 progress 事件有效
+    pub percentage: u32,
+    /// 状态描述（用户友好的状态文本）
+    pub status: String,
+    /// 错误码，仅 error 事件有效
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<i32>,
+    /// 错误详情（后端原始消息），用于折叠展示
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_detail: Option<String>,
 }
-/// 安装指定的玲珑应用（支持进度回调）
+
+// ==================== 辅助函数 ====================
+
+/// 根据消息内容生成用户友好的状态描述
+fn get_status_from_message(message: &str) -> String {
+    let lower = message.to_lowercase();
+    
+    if lower.contains("beginning to install") {
+        "开始安装".to_string()
+    } else if lower.contains("installing application") {
+        "正在安装应用".to_string()
+    } else if lower.contains("installing runtime") {
+        "正在安装运行时".to_string()
+    } else if lower.contains("installing base") {
+        "正在安装基础包".to_string()
+    } else if lower.contains("downloading metadata") {
+        "正在下载元数据".to_string()
+    } else if lower.contains("downloading files") || lower.contains("downloading") {
+        "正在下载文件".to_string()
+    } else if lower.contains("processing after install") {
+        "安装后处理".to_string()
+    } else if lower.contains("success") {
+        "安装完成".to_string()
+    } else if !message.is_empty() {
+        // 截取前50个字符作为状态
+        if message.len() > 50 {
+            format!("{}...", &message[..50])
+        } else {
+            message.to_string()
+        }
+    } else {
+        "正在处理".to_string()
+    }
+}
+
+/// 根据错误码获取用户友好的错误消息
+fn get_error_status_from_code(code: i32) -> String {
+    match code {
+        -1 => "安装失败: 通用错误".to_string(),
+        1 => "安装已取消".to_string(),
+        1000 => "安装失败: 未知错误".to_string(),
+        1001 => "安装失败: 远程仓库找不到应用".to_string(),
+        1002 => "安装失败: 本地找不到应用".to_string(),
+        2001 => "安装失败".to_string(),
+        2002 => "安装失败: 远程无该应用".to_string(),
+        2003 => "安装失败: 已安装同版本".to_string(),
+        2004 => "安装失败: 需要降级安装".to_string(),
+        2005 => "安装失败: 安装模块时不允许指定版本".to_string(),
+        2006 => "安装失败: 安装模块需先安装应用".to_string(),
+        2007 => "安装失败: 模块已存在".to_string(),
+        2008 => "安装失败: 架构不匹配".to_string(),
+        2009 => "安装失败: 远程无该模块".to_string(),
+        2010 => "安装失败: 缺少 erofs 解压命令".to_string(),
+        2011 => "安装失败: 不支持的文件格式".to_string(),
+        3001 => "安装失败: 网络错误".to_string(),
+        4001 => "安装失败: 无效引用".to_string(),
+        4002 => "安装失败: 未知架构".to_string(),
+        _ => format!("安装失败: 错误码 {}", code),
+    }
+}
+
+/// 安装指定的玲珑应用（使用 --json 模式）
+/// 
+/// 实现基于 ll-cli-json-install-gui-requirements.md 的状态机模型：
+/// - IDLE -> WAITING: 启动安装
+/// - WAITING -> INSTALLING: 收到进度百分比
+/// - INSTALLING/WAITING -> FAILED: 收到错误/超时/进程异常退出
+/// - INSTALLING -> SUCCEEDED: 进程正常退出 (exit code 0)
+/// 
 /// 参数说明：
 /// - app_handle: Tauri 应用句柄，用于发送进度事件
 /// - app_id: 应用 ID（例如：org.deepin.calculator）
 /// - version: 可选的版本号（如果为空，则安装最新版本）
 /// - force: 是否强制安装
 pub async fn install_linglong_app(
-        app_handle: AppHandle,
-        app_id: String,
-        version: Option<String>,
-        force: bool,
+    app_handle: AppHandle,
+    app_id: String,
+    version: Option<String>,
+    force: bool,
 ) -> Result<String, String> {
-    info!("========== [install_linglong_app] START ==========");
+    info!("========== [install_linglong_app] START (JSON mode) ==========");
     info!("[install_linglong_app] app_id: {}", app_id);
     info!("[install_linglong_app] version: {:?}", version);
     info!("[install_linglong_app] force: {}", force);
 
     // 构建应用引用
     let app_ref = if let Some(ver) = version.as_ref() {
-            format!("{}/{}", app_id, ver)
+        format!("{}/{}", app_id, ver)
     } else {
-            app_id.clone()
+        app_id.clone()
     };
 
-    // 使用 PTY (伪终端) 来运行命令
-    // 这样 ll-cli 会认为它在真实的终端中运行，会输出进度信息
-    // 同时我们也能捕获这些输出
-    let pty_system = native_pty_system();
-
-    let pty_pair = pty_system
-        .openpty(PtySize {
-                rows: 24,
-                cols: 80,
-                pixel_width: 0,
-                pixel_height: 0,
-        })
-        .map_err(|e| {
-                let err_msg = format!("Failed to create PTY: {}", e);
-            error!("[install_linglong_app] ERROR: {}", err_msg);
-            err_msg
-        })?;
-
-    // 构建命令
-    let mut cmd = ll_cli_pty_command();
+    // 构建命令：ll-cli install <app_ref> --json -y [--force]
+    let mut cmd = ll_cli_command();
     cmd.arg("install");
     cmd.arg(&app_ref);
-    cmd.arg("-y"); // 自动回答是
+    cmd.arg("--json");  // 使用 JSON 输出模式
+    cmd.arg("-y");      // 自动确认
 
     if force {
-            cmd.arg("--force");
+        cmd.arg("--force");
     }
 
+    // 配置 stdout 为管道以捕获输出
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+
     let command_str = format!(
-            "ll-cli install {} -y{}",
+        "ll-cli install {} --json -y{}",
         app_ref,
         if force { " --force" } else { "" }
     );
     info!("[install_linglong_app] Executing command: {}", command_str);
 
-    // 在 PTY 中启动命令
-    let child = pty_pair.slave.spawn_command(cmd).map_err(|e| {
-            let err_msg = format!("Failed to spawn command in PTY: {}", e);
+    // 启动子进程
+    let mut child = cmd.spawn().map_err(|e| {
+        let err_msg = format!("Failed to spawn ll-cli process: {}", e);
         error!("[install_linglong_app] ERROR: {}", err_msg);
         err_msg
     })?;
 
-    info!("[install_linglong_app] Process spawned in PTY successfully");
+    info!("[install_linglong_app] Process spawned successfully");
 
-    let force_hint_detected = Arc::new(AtomicBool::new(false));
-    let force_hint_message = Arc::new(Mutex::new(None::<String>));
-    let last_cli_message = Arc::new(Mutex::new(None::<String>));
-    let auth_wait_start = Arc::new(Mutex::new(None::<Instant>));
+    // 获取 stdout 用于读取 JSON 输出
+    let stdout = child.stdout.take().ok_or_else(|| {
+        "Failed to capture stdout".to_string()
+    })?;
 
-    // 将进程包装在 Arc<Mutex<>> 中，以便可以在多个地方访问
-    let child_arc = Arc::new(Mutex::new(child));
-
+    // 初始化状态机
+    let state_machine = Arc::new(Mutex::new(InstallStateMachine::new()));
+    
     // 将进程存储到全局管理器中，以便可以取消
+    let child_arc = Arc::new(Mutex::new(child));
     {
-            let mut processes = INSTALL_PROCESSES.lock().map_err(|e| {
-                format!("Failed to lock process manager: {}", e)
+        let mut processes = INSTALL_PROCESSES.lock().map_err(|e| {
+            format!("Failed to lock process manager: {}", e)
         })?;
-
-        info!("[install_linglong_app] About to store process with app_id: '{}'", app_id);
-        info!("[install_linglong_app] Current processes before insert: {}", processes.len());
-
+        
+        info!("[install_linglong_app] Storing process with app_id: '{}'", app_id);
         processes.insert(app_id.clone(), child_arc.clone());
-
-        info!("[install_linglong_app] Process stored successfully");
-        info!("[install_linglong_app] Current processes after insert: {}", processes.len());
-        info!("[install_linglong_app] All stored app_ids:");
-        for key in processes.keys() {
-                info!("[install_linglong_app]   - '{}'", key);
-        }
+        info!("[install_linglong_app] Process stored. Total processes: {}", processes.len());
     }
 
-    // 从 PTY master 读取输出
-    let mut reader = pty_pair
-        .master
-        .try_clone_reader()
-        .map_err(|e| {
-                let err_msg = format!("Failed to clone PTY reader: {}", e);
-            error!("[install_linglong_app] ERROR: {}", err_msg);
-            err_msg
-        })?;
+    // 启动状态机
+    {
+        let mut sm = state_machine.lock().map_err(|e| format!("Lock error: {}", e))?;
+        sm.start();
+    }
 
-    info!("[install_linglong_app] Starting to read PTY output...");
-    info!("==========================================================");
+    // 发送初始等待事件
+    let _ = app_handle.emit("install-progress", &InstallProgress {
+        app_id: app_id.clone(),
+        event_type: "message".to_string(),
+        message: "Starting installation...".to_string(),
+        percentage: 0,
+        status: "等待安装".to_string(),
+        code: None,
+        error_detail: None,
+    });
 
-    let pty_writer = match pty_pair.master.take_writer() {
-        Ok(writer) => Some(Arc::new(Mutex::new(writer))),
-        Err(e) => {
-            warn!("[install_linglong_app] WARN: Failed to take PTY writer: {}", e);
-            None
-        }
-    };
-
-    // 在单独的线程中读取 PTY 输出
+    // 在单独的线程中读取 stdout JSON 输出
     let app_id_clone = app_id.clone();
     let app_handle_clone = app_handle.clone();
-    let force_hint_detected_reader = force_hint_detected.clone();
-    let force_hint_message_reader = force_hint_message.clone();
-    let last_cli_message_reader = last_cli_message.clone();
-    let auth_wait_start_reader = auth_wait_start.clone();
-    let auto_confirm_sent = Arc::new(AtomicBool::new(false));
-    let auto_confirm_sent_reader = auto_confirm_sent.clone();
-    let pty_writer_reader = pty_writer.clone();
+    let state_machine_clone = state_machine.clone();
+    let last_error: Arc<Mutex<Option<(i32, String)>>> = Arc::new(Mutex::new(None));
+    let last_error_clone = last_error.clone();
 
     let reader_handle = std::thread::spawn(move || {
-            let mut buffer = [0u8; 8192];  // 增大缓冲区
-            let mut line_buffer = String::new();
-            let mut last_percentage = 0u32;  // 追踪上次发送的百分比
+        let reader = BufReader::new(stdout);
+        let mut last_percentage: u32 = 0;
 
-            let record_cli_output = |text: &str| {
-                let trimmed_line = text.trim();
-                if trimmed_line.is_empty() {
-                    return;
-            }
-
-            if !trimmed_line.contains('%') {
-                    if let Ok(mut last_line_guard) = last_cli_message_reader.lock() {
-                        *last_line_guard = Some(trimmed_line.to_string());
-                }
-            }
-
-            if trimmed_line.contains("ll-cli install") && trimmed_line.contains("--force") {
-                    force_hint_detected_reader.store(true, Ordering::Relaxed);
-                    if let Ok(mut msg_guard) = force_hint_message_reader.lock() {
-                        if msg_guard.is_none() {
-                            *msg_guard = Some(trimmed_line.to_string());
-                    }
-                }
-            }
-
-            let lower = trimmed_line.to_ascii_lowercase();
-            if !auto_confirm_sent_reader.load(Ordering::Relaxed)
-                && (lower.contains("available actions") || lower.contains("your choice"))
-            {
-                if let Some(writer) = &pty_writer_reader {
-                    if let Ok(mut guard) = writer.lock() {
-                        if let Err(e) = guard.write_all(b"Yes\n") {
-                            warn!("[PTY Writer] WARN: failed to write auto confirm: {}", e);
-                        } else if let Err(e) = guard.flush() {
-                            warn!("[PTY Writer] WARN: failed to flush auto confirm: {}", e);
-                        } else {
-                            info!("[PTY Writer] Auto-confirmed prompt with 'Yes'");
-                            auto_confirm_sent_reader.store(true, Ordering::Relaxed);
-                        }
-                    }
-                }
-            }
-        };
-
-        loop {
-                match reader.read(&mut buffer) {
-                    Ok(0) => {
-                        info!("[PTY Reader] EOF reached");
-                    break;
-                }
-                Ok(n) => {
-                        let text = String::from_utf8_lossy(&buffer[..n]);
-
-                        // 将读取的内容添加到行缓冲区
-                        line_buffer.push_str(&text);
-
-                        // 处理换行符分隔的完整行
-                        while let Some(newline_pos) = line_buffer.find('\n') {
-                            let line = line_buffer[..newline_pos].to_string();
-                            line_buffer = line_buffer[newline_pos + 1..].to_string();
-
-                            if !line.trim().is_empty() {
-                                record_cli_output(&line);
-                                let progress_info = parse_install_progress(&line, &app_id_clone);
-
-                                // 更新授权等待状态
-                                if let Ok(mut auth_guard) = auth_wait_start_reader.lock() {
-                                    if progress_info.status == "等待授权" {
-                                        if auth_guard.is_none() {
-                                            info!("[PTY] Detected auth request, starting timer");
-                                            *auth_guard = Some(Instant::now());
-                                        }
-                                    } else if !progress_info.status.is_empty() && progress_info.status != "正在处理" {
-                                        // 如果状态变了（且不是默认的正在处理），清除计时器
-                                        if auth_guard.is_some() {
-                                            info!("[PTY] Auth state cleared, status: {}", progress_info.status);
-                                            *auth_guard = None;
-                                        }
-                                    }
-                                }
-
-                                // 只有当百分比变化时才发送事件，避免大量重复更新
-                                // 或者当状态为"安装失败"时，强制发送
-                                if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
-                                    info!("[PTY] Progress changed or error detected: {}% -> {}%, status: {}", last_percentage, progress_info.percentage, progress_info.status);
-                                    if progress_info.percentage != last_percentage {
-                                        last_percentage = progress_info.percentage;
-                                    }
-
-                                    if let Err(e) = app_handle_clone.emit("install-progress", &progress_info) {
-                                        warn!("[PTY Reader] WARN: Failed to emit progress: {}", e);
-                                    }
-                                }
-                            }
-                    }
-
-                    // 处理缓冲区中包含百分比但没有换行符的内容（同行更新的进度条）
-                    if line_buffer.contains('%') && line_buffer.contains('\r') {
-                            record_cli_output(&line_buffer);
-                            let progress_info = parse_install_progress(&line_buffer, &app_id_clone);
-
-                            // 更新授权等待状态
-                            if let Ok(mut auth_guard) = auth_wait_start_reader.lock() {
-                                if progress_info.status == "等待授权" {
-                                    if auth_guard.is_none() {
-                                        info!("[PTY] Detected auth request (partial), starting timer");
-                                        *auth_guard = Some(Instant::now());
-                                    }
-                                } else if !progress_info.status.is_empty() && progress_info.status != "正在处理" {
-                                    if auth_guard.is_some() {
-                                        info!("[PTY] Auth state cleared (partial), status: {}", progress_info.status);
-                                        *auth_guard = None;
-                                    }
-                                }
-                            }
-
-                            if progress_info.percentage != last_percentage || progress_info.status == "安装失败" {
-                                info!("[PTY] Progress changed (partial): {}% -> {}%", last_percentage, progress_info.percentage);
-                                if progress_info.percentage != last_percentage {
-                                    last_percentage = progress_info.percentage;
-                                }
-
-                                let _ = app_handle_clone.emit("install-progress", &progress_info);
-                            }
-                    }
-                }
+        for line_result in reader.lines() {
+            let line = match line_result {
+                Ok(l) => l,
                 Err(e) => {
-                        error!("[PTY Reader] Error reading: {}", e);
-                    break;
+                    warn!("[JsonReader] Error reading line: {}", e);
+                    continue;
+                }
+            };
+
+            info!("[JsonReader] Raw line: {}", line);
+
+            // 解析 JSON 行
+            let event = match parse_json_line(&line) {
+                Some(e) => e,
+                None => continue,  // 非 JSON 行，跳过
+            };
+
+            info!("[JsonReader] Parsed event: {:?}", event);
+
+            match event.event_type {
+                JsonEventType::Progress => {
+                    // 更新状态机
+                    if let Ok(mut sm) = state_machine_clone.lock() {
+                        sm.on_progress(event.percentage.unwrap_or(0.0));
+                    }
+
+                    let percentage = event.percentage.unwrap_or(0.0) as u32;
+                    let percentage = percentage.min(100);  // clamp to 100
+
+                    // 只有当百分比变化时才发送事件
+                    if percentage != last_percentage {
+                        last_percentage = percentage;
+                        
+                        let status = get_status_from_message(&event.message);
+                        
+                        let progress_event = InstallProgress {
+                            app_id: app_id_clone.clone(),
+                            event_type: "progress".to_string(),
+                            message: event.message.clone(),
+                            percentage,
+                            status,
+                            code: None,
+                            error_detail: None,
+                        };
+
+                        info!("[JsonReader] Emitting progress: {}%", percentage);
+                        let _ = app_handle_clone.emit("install-progress", &progress_event);
+                    }
+                }
+                JsonEventType::Error => {
+                    // 更新状态机
+                    if let Ok(mut sm) = state_machine_clone.lock() {
+                        sm.on_error();
+                    }
+
+                    let code = event.code.unwrap_or(-1);
+                    let status = get_error_status_from_code(code);
+
+                    // 保存最后的错误信息
+                    if let Ok(mut last_err) = last_error_clone.lock() {
+                        *last_err = Some((code, event.message.clone()));
+                    }
+
+                    let error_event = InstallProgress {
+                        app_id: app_id_clone.clone(),
+                        event_type: "error".to_string(),
+                        message: event.message.clone(),
+                        percentage: 0,
+                        status,
+                        code: Some(code),
+                        error_detail: Some(event.message.clone()),
+                    };
+
+                    error!("[JsonReader] Emitting error: code={}, message={}", code, event.message);
+                    let _ = app_handle_clone.emit("install-progress", &error_event);
+                }
+                JsonEventType::Message => {
+                    // 消息事件仅用于日志和提示，不改变状态
+                    let status = get_status_from_message(&event.message);
+                    
+                    let message_event = InstallProgress {
+                        app_id: app_id_clone.clone(),
+                        event_type: "message".to_string(),
+                        message: event.message.clone(),
+                        percentage: last_percentage,
+                        status,
+                        code: None,
+                        error_detail: None,
+                    };
+
+                    info!("[JsonReader] Emitting message: {}", event.message);
+                    let _ = app_handle_clone.emit("install-progress", &message_event);
                 }
             }
         }
 
-        // 处理剩余的缓冲区内容
-        if !line_buffer.trim().is_empty() {
-                record_cli_output(&line_buffer);
-                if line_buffer.contains('%') {
-                    info!("[PTY Final] Processing remaining buffer");
-                let progress_info = parse_install_progress(&line_buffer, &app_id_clone);
-                let _ = app_handle_clone.emit("install-progress", &progress_info);
-            }
-        }
-
-        info!("[PTY Reader] Finished reading output");
+        info!("[JsonReader] Finished reading stdout");
     });
 
     info!("[install_linglong_app] Waiting for process to complete...");
 
-    // 使用轮询方式等待进程结束，避免长时间持有锁导致 cancel 无法工作
+    // 使用轮询方式等待进程结束，同时检查超时
     let exit_status = loop {
-            let status = {
-                let mut child = child_arc.lock().map_err(|e| {
-                    format!("Failed to lock child process: {}", e)
+        // 检查进程状态
+        let status = {
+            let mut child = child_arc.lock().map_err(|e| {
+                format!("Failed to lock child process: {}", e)
             })?;
 
-            // 使用 try_wait() 非阻塞检查进程状态
             match child.try_wait() {
-                    Ok(Some(status)) => {
-                        info!("[install_linglong_app] Process exited");
+                Ok(Some(status)) => {
+                    info!("[install_linglong_app] Process exited with status: {:?}", status);
                     Some(status)
                 }
-                Ok(None) => {
-                        // 进程还在运行
-                        None
-                }
+                Ok(None) => None,  // 进程还在运行
                 Err(e) => {
-                        let err_msg = format!("Failed to check process status: {}", e);
+                    let err_msg = format!("Failed to check process status: {}", e);
                     error!("[install_linglong_app] ERROR: {}", err_msg);
                     return Err(err_msg);
                 }
             }
-        }; // 锁在这里释放
+        };
 
-        // 检查授权超时 (60秒)
+        // 检查超时 (60秒无进度更新)
         {
-            if let Ok(auth_guard) = auth_wait_start.lock() {
-                if let Some(start_time) = *auth_guard {
-                    if start_time.elapsed().as_secs() > 60 {
-                        warn!("[install_linglong_app] Authorization timed out (>60s). Killing process...");
-                        
-                        // 尝试终止进程
-                        if let Ok(mut child) = child_arc.lock() {
-                             let _ = child.kill();
-                        }
-                        
-                        // 发送超时错误事件
-                         let _ = app_handle.emit("install-progress", &InstallProgress {
-                            app_id: app_id.clone(),
-                            progress: "error".to_string(),
-                            percentage: 0,
-                            status: "安装失败: 授权超时".to_string(),
-                        });
-                        
-                        return Err("Authorization timed out".to_string());
-                    }
+            let sm = state_machine.lock().map_err(|e| format!("Lock error: {}", e))?;
+            if sm.check_timeout() {
+                warn!("[install_linglong_app] Progress timeout (>60s). Killing process...");
+                
+                // 终止进程
+                if let Ok(mut child) = child_arc.lock() {
+                    let _ = child.kill();
                 }
+
+                // 发送超时错误事件
+                let _ = app_handle.emit("install-progress", &InstallProgress {
+                    app_id: app_id.clone(),
+                    event_type: "error".to_string(),
+                    message: "Installation timed out: no progress for 60 seconds".to_string(),
+                    percentage: 0,
+                    status: "安装失败: 进度超时".to_string(),
+                    code: Some(-2),
+                    error_detail: Some("60秒内未收到进度更新，安装已超时".to_string()),
+                });
+
+                return Err("Installation timed out".to_string());
             }
         }
 
         if let Some(status) = status {
-                break status;
+            break status;
         }
 
-        // 短暂休眠后再次检查，给 cancel 操作留出执行机会
+        // 短暂休眠后再次检查
         std::thread::sleep(std::time::Duration::from_millis(100));
     };
 
-    // 从全局管理器中移除进程（无论成功还是失败）
+    // 从全局管理器中移除进程
     {
-            let mut processes = INSTALL_PROCESSES.lock().map_err(|e| {
-                format!("Failed to lock process manager: {}", e)
+        let mut processes = INSTALL_PROCESSES.lock().map_err(|e| {
+            format!("Failed to lock process manager: {}", e)
         })?;
         processes.remove(&app_id);
         info!("[install_linglong_app] Process removed from manager for app: {}", app_id);
@@ -643,186 +821,203 @@ pub async fn install_linglong_app(
 
     info!("==========================================================");
     info!("[install_linglong_app] Process exited with status: {:?}", exit_status);
-    let get_force_hint_message = || -> String {
-            let fallback = format!(
-                "ll-cli install {}/version --force",
-            app_id
-        );
-        match force_hint_message.lock() {
-                Ok(msg_guard) => msg_guard.clone().unwrap_or(fallback),
-                Err(_) => fallback,
-        }
-    };
-    if !exit_status.success() {
-            let mut failure_message = format!("ll-cli install command failed: {:?}", exit_status);
 
-                if force_hint_detected.load(Ordering::Relaxed) {
-                failure_message = get_force_hint_message();
-        } else if let Ok(last_line_guard) = last_cli_message.lock() {
-                if let Some(last_line) = &*last_line_guard {
-                    failure_message = last_line.clone();
-            }
+    // 根据退出码判断最终状态（退出码是最终裁决）
+    if exit_status.success() {
+        // 更新状态机
+        if let Ok(mut sm) = state_machine.lock() {
+            sm.on_success();
         }
 
-        error!("[install_linglong_app] ERROR: {}", failure_message);
-
-        // Determine status message based on failure reason
-        let status_msg = if failure_message.contains("Request dismissed") 
-            || failure_message.contains("Authentication is required") 
-            || failure_message.contains("AUTHENTICATING FOR") {
-            "安装失败: 授权失败".to_string()
+        let success_msg = if let Some(ver) = version {
+            format!("Successfully installed {} version {}", app_id, ver)
         } else {
-            "安装失败".to_string()
+            format!("Successfully installed {}", app_id)
         };
+
+        info!("[install_linglong_app] SUCCESS: {}", success_msg);
+
+        // 发送完成事件
+        let _ = app_handle.emit("install-progress", &InstallProgress {
+            app_id: app_id.clone(),
+            event_type: "progress".to_string(),
+            message: "Installation completed successfully".to_string(),
+            percentage: 100,
+            status: "安装完成".to_string(),
+            code: None,
+            error_detail: None,
+        });
+
+        info!("========== [install_linglong_app] END ==========");
+        Ok(success_msg)
+    } else {
+        // 更新状态机
+        if let Ok(mut sm) = state_machine.lock() {
+            sm.on_failure();
+        }
+
+        // 获取之前保存的错误信息
+        let (error_code, error_message) = if let Ok(last_err) = last_error.lock() {
+            last_err.clone().unwrap_or((-1, "Unknown error".to_string()))
+        } else {
+            (-1, "Unknown error".to_string())
+        };
+
+        let status = get_error_status_from_code(error_code);
+        let failure_msg = format!("Installation failed: {}", error_message);
+
+        error!("[install_linglong_app] FAILED: {}", failure_msg);
 
         // 发送失败事件
         let _ = app_handle.emit("install-progress", &InstallProgress {
-                app_id: app_id.clone(),
-                progress: "error".to_string(),
+            app_id: app_id.clone(),
+            event_type: "error".to_string(),
+            message: error_message.clone(),
             percentage: 0,
-            status: status_msg.clone(),
+            status,
+            code: Some(error_code),
+            error_detail: Some(error_message),
         });
 
-        if status_msg.contains("授权失败") {
-            return Err(status_msg);
+        info!("========== [install_linglong_app] END ==========");
+        Err(failure_msg)
+    }
+}
+
+/// 取消正在进行的安装
+/// 
+/// 此函数可独立调用，不依赖安装流程内部状态。
+/// 会立即终止 ll-cli 子进程并发送取消事件。
+/// 
+/// 参数说明：
+/// - app_handle: Tauri 应用句柄，用于发送取消事件
+/// - app_id: 要取消安装的应用 ID
+/// 
+/// 返回：
+/// - Ok(String): 取消成功的消息
+/// - Err(String): 取消失败的原因（如进程不存在）
+pub async fn cancel_linglong_install(
+    app_handle: AppHandle,
+    app_id: String,
+) -> Result<String, String> {
+    info!("[cancel_linglong_install] Cancelling installation for app: {}", app_id);
+
+    // 从全局管理器中获取进程
+    let child_arc = {
+        let processes = INSTALL_PROCESSES.lock().map_err(|e| {
+            format!("Failed to lock process manager: {}", e)
+        })?;
+
+        info!("[cancel_linglong_install] Current processes: {}", processes.len());
+        for key in processes.keys() {
+            info!("[cancel_linglong_install]   - '{}'", key);
         }
 
-        return Err(failure_message);
-    }
-    if !force && force_hint_detected.load(Ordering::Relaxed) {
-            let failure_message = get_force_hint_message();
-            warn!("[install_linglong_app] FORCE HINT DETECTED WITHOUT FORCE FLAG: {}", failure_message);
-        let _ = app_handle.emit("install-progress", &InstallProgress {
-                app_id: app_id.clone(),
-                progress: "error".to_string(),
-            percentage: 0,
-            status: "安装失败".to_string(),
-        });
-        return Err(failure_message);
-    }
-    let success_msg = if let Some(ver) = version {
-            format!("Successfully installed {} version {}", app_id, ver)
-    } else {
-            format!("Successfully installed {}", app_id)
+        match processes.get(&app_id) {
+            Some(child) => child.clone(),
+            None => {
+                warn!("[cancel_linglong_install] No installation process found for app: {}", app_id);
+                return Err(format!("No installation in progress for {}", app_id));
+            }
+        }
     };
 
-    info!("[install_linglong_app] SUCCESS: {}", success_msg);
+    // 终止进程（使用 pkexec 获取管理员权限强制杀死）
+    let kill_result = {
+        let child = child_arc.lock().map_err(|e| {
+            format!("Failed to lock child process: {}", e)
+        })?;
 
-    // 发送完成事件
+        let pid = child.id();
+        info!("[cancel_linglong_install] Killing process (PID: {}) for app: {}", pid, app_id);
+        
+        // Unix 系统使用 pkexec kill -9 强制杀死进程组
+        #[cfg(unix)]
+        {
+            if pid > 0 {
+                // 使用 pkexec kill -9 -<pid> 杀死整个进程组
+                // 负号表示进程组 ID（PGID = PID，因为我们在启动时调用了 setpgid(0, 0)）
+                let pgid = pid as i32;
+                let pgid_arg = format!("-{}", pgid);
+                
+                info!("[cancel_linglong_install] Executing: pkexec kill -9 {}", pgid_arg);
+                
+                let output = std::process::Command::new("pkexec")
+                    .arg("kill")
+                    .arg("-9")
+                    .arg(&pgid_arg)
+                    .output();
+                
+                match output {
+                    Ok(out) => {
+                        if out.status.success() {
+                            info!("[cancel_linglong_install] Process group {} killed successfully", pgid);
+                            Ok(())
+                        } else {
+                            let stderr = String::from_utf8_lossy(&out.stderr);
+                            error!("[cancel_linglong_install] pkexec kill failed: {}", stderr);
+                            Err(format!("无法终止安装进程: {}", stderr))
+                        }
+                    }
+                    Err(e) => {
+                        error!("[cancel_linglong_install] Failed to execute pkexec: {}", e);
+                        Err(format!("无法执行 pkexec 命令: {}. 请确保系统已安装 polkit", e))
+                    }
+                }
+            } else {
+                error!("[cancel_linglong_install] Invalid PID: {}", pid);
+                Err("无效的进程 ID".to_string())
+            }
+        }
+        
+        // 非 Unix 系统使用标准 kill() 方法
+        #[cfg(not(unix))]
+        {
+            drop(child);
+            let mut child_mut = child_arc.lock().map_err(|e| {
+                format!("Failed to lock child process: {}", e)
+            })?;
+            
+            match child_mut.kill() {
+                Ok(_) => {
+                    info!("[cancel_linglong_install] Process killed successfully");
+                    Ok(())
+                }
+                Err(e) => {
+                    error!("[cancel_linglong_install] Failed to kill process: {}", e);
+                    Err(format!("无法终止安装进程: {}", e))
+                }
+            }
+        }
+    };
+
+    // 如果终止失败，返回错误
+    if let Err(err) = kill_result {
+        warn!("[cancel_linglong_install] Cancel failed: {}", err);
+        return Err(err);
+    }
+
+    // 从全局管理器中移除进程
+    {
+        let mut processes = INSTALL_PROCESSES.lock().map_err(|e| {
+            format!("Failed to lock process manager: {}", e)
+        })?;
+        processes.remove(&app_id);
+        info!("[cancel_linglong_install] Process removed from manager for app: {}", app_id);
+    }
+
+    // 发送取消事件
     let _ = app_handle.emit("install-progress", &InstallProgress {
         app_id: app_id.clone(),
-        progress: "100%".to_string(),
-        percentage: 100,
-        status: "安装完成".to_string(),
+        event_type: "error".to_string(),
+        message: "Installation cancelled by user".to_string(),
+        percentage: 0,
+        status: "安装已取消".to_string(),
+        code: Some(1),  // 1 = Cancelled (根据错误码枚举)
+        error_detail: Some("用户取消了安装操作".to_string()),
     });
 
-    info!("========== [install_linglong_app] END ==========");
+    let success_msg = format!("Installation of {} cancelled successfully", app_id);
+    info!("[cancel_linglong_install] {}", success_msg);
     Ok(success_msg)
-}
-/// 解析安装进度字符串
-/// 处理 PTY 输出中的 \r 字符（用于在同一行更新进度条）
-/// 示例输入包含多个 \r 分隔的进度更新
-fn parse_install_progress(line: &str, app_id: &str) -> InstallProgress {
-        info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    info!("[parse_install_progress] Original line length: {} bytes", line.len());
-
-    // 移除 ANSI 控制字符
-    let cleaned = line
-        .replace("\x1b[K", "")
-        .replace("\x1b[?25l", "")
-        .replace("\x1b[?25h", "")
-        .replace("[K", "")
-        .replace("[?25l", "")
-        .replace("[?25h", "");
-
-    // 按 \r 分割，获取最后一个非空的进度更新
-    let parts: Vec<&str> = cleaned.split('\r').collect();
-    let latest_progress = parts
-        .iter()
-        .rev()
-        .find(|s| !s.trim().is_empty())
-        .map(|s| s.trim())
-        .unwrap_or("");
-
-    info!("[parse_install_progress] Total progress updates in line: {}", parts.len());
-    info!("[parse_install_progress] ll-cli output: {:?}", latest_progress);
-
-    // 从最新的进度文本中提取百分比
-    let percentage = if let Some(percent_pos) = latest_progress.rfind('%') {
-            // 向前查找数字和小数点
-            let before_percent = &latest_progress[..percent_pos];
-            let digits: String = before_percent
-                .chars()
-                .rev()
-                .take_while(|c| c.is_ascii_digit() || *c == '.')
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
-
-        // 解析为浮点数后转为整数（向下取整）
-        let percent_value = digits.parse::<f64>()
-            .map(|f| f as u32)
-            .unwrap_or(0);
-        info!("[parse_install_progress] ✓ Parsed percentage: {}%", percent_value);
-        percent_value
-    } else {
-            warn!("[parse_install_progress] ✗ No '%' found in latest progress");
-        0
-    };
-
-    // 从最新的进度文本中提取状态描述
-    let status = if latest_progress.contains("Beginning to install") {
-            "开始安装".to_string()
-    } else if latest_progress.contains("Installing application") {
-            "正在安装应用".to_string()
-    } else if latest_progress.contains("Installing runtime") {
-            "正在安装运行时".to_string()
-    } else if latest_progress.contains("Installing base") {
-            "正在安装基础包".to_string()
-    } else if latest_progress.contains("Downloading metadata") {
-            "正在下载元数据".to_string()
-    } else if latest_progress.contains("Downloading files") {
-            "正在下载文件".to_string()
-    } else if latest_progress.contains("processing after install") {
-            "安装后处理".to_string()
-    } else if latest_progress.contains("success") {
-            "安装完成".to_string()
-    } else if latest_progress.contains("download") || latest_progress.contains("下载") {
-            "正在下载".to_string()
-    } else if latest_progress.contains("install") || latest_progress.contains("安装") {
-            "正在安装".to_string()
-    } else if latest_progress.contains("Authentication is required") || latest_progress.contains("AUTHENTICATING FOR") || latest_progress.contains("Authenticating as") {
-            "等待授权".to_string()
-    } else if latest_progress.contains("Error executing command as another user: Request dismissed") {
-            "安装失败".to_string()
-    } else if latest_progress.to_lowercase().contains("error") || latest_progress.contains("错误") || latest_progress.to_lowercase().contains("failed") {
-            "安装失败".to_string()
-    } else if latest_progress.to_lowercase().contains("package not found") || latest_progress.contains("no modules found") {
-        "安装失败: 找不到App，请重试".to_string()
-    } else if !latest_progress.is_empty() {
-            // 截取前50个字符作为状态
-            let status_text = if latest_progress.len() > 50 {
-                format!("{}...", &latest_progress[..50])
-        } else {
-                latest_progress.to_string()
-        };
-        status_text
-    } else {
-            "正在处理".to_string()
-    };
-
-    let result = InstallProgress {
-            app_id: app_id.to_string(),
-            progress: latest_progress.to_string(),
-            percentage,
-            status: status.clone(),
-    };
-
-    info!("[parse_install_progress] ═══ RESULT ═══");
-    info!("[parse_install_progress] percentage: {}%", result.percentage);
-    info!("[parse_install_progress] status: {}", result.status);
-    info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-    result
 }

@@ -82,6 +82,17 @@ export const installApp = async(
 }
 
 /**
+ * 取消正在进行的安装
+ * @param appId - 要取消安装的应用ID
+ * @returns Promise<string> 取消操作的结果
+ */
+export const cancelInstall = async(
+  appId: string,
+): Promise<string> => {
+  return await invoke('cancel_install', { appId })
+}
+
+/**
  * 监听安装进度事件
  * @param callback - 进度更新回调函数
  * @returns Promise<UnlistenFn> 取消监听的函数
@@ -91,6 +102,10 @@ export const installApp = async(
  * // 开始监听
  * const unlisten = await onInstallProgress((progress) => {
  *   console.log(`${progress.appId}: ${progress.percentage}% - ${progress.status}`)
+ *   // 新增: 处理事件类型
+ *   if (progress.eventType === 'error') {
+ *     console.error(`Error code: ${progress.code}, detail: ${progress.errorDetail}`)
+ *   }
  * })
  *
  * // 取消监听

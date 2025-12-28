@@ -12,6 +12,7 @@ use services::installed::{
     search_app_versions,
     run_linglong_app,
     install_linglong_app,
+    cancel_linglong_install,
     InstalledApp,
 };
 use services::prune::prune_linglong_apps;
@@ -110,6 +111,17 @@ async fn prune_apps() -> Result<String, String> {
     prune_linglong_apps().await
 }
 
+#[tauri::command]
+async fn cancel_install(
+    app_handle: tauri::AppHandle,
+    app_id: String,
+) -> Result<String, String> {
+    log::info!("[cancel_install] Command invoked: app_id={}", app_id);
+    let result = cancel_linglong_install(app_handle, app_id.clone()).await;
+    log::info!("[cancel_install] Command result for {}: {:?}", app_id, result);
+    result
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let did_auto_disable_dmabuf = if webkit_dmabuf::should_disable_webkit_dmabuf_renderer() {
@@ -164,6 +176,7 @@ pub fn run() {
             search_versions,
             run_app,
             install_app,
+            cancel_install,
             prune_apps,
             search_remote_app_cmd,
             get_ll_cli_version_cmd,

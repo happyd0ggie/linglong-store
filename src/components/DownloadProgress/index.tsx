@@ -5,9 +5,9 @@
 import styles from './index.module.scss'
 import { useMemo } from 'react'
 import DefaultIcon from '@/assets/linyaps.svg?url'
-import { Progress, Empty, message } from 'antd'
+import { Progress, Empty, message, Modal } from 'antd'
 import { useInstallQueueStore } from '@/stores/installQueue'
-import { runApp } from '@/apis/invoke'
+import { runApp, cancelInstall } from '@/apis/invoke'
 
 /**
  * 任务进度图标组件
@@ -109,6 +109,29 @@ const DownloadProgress = () => {
   }
 
   /**
+   * 取消正在进行的安装
+   */
+  const handleCancelInstall = (task: Store.InstallTask) => {
+    Modal.confirm({
+      title: '取消安装',
+      content: `确定要取消安装 ${task.appInfo?.zhName || task.appInfo?.name || '该应用'} 吗？`,
+      okText: '确定取消',
+      cancelText: '继续安装',
+      centered: true,
+      okButtonProps: { danger: true },
+      onOk: async() => {
+        try {
+          await cancelInstall(task.appId)
+          messageApi.info('已发送取消请求')
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          messageApi.error(`取消失败: ${errorMessage}`)
+        }
+      },
+    })
+  }
+
+  /**
    * 渲染任务状态文本
    */
   const renderStatusText = (task: Store.InstallTask) => {
@@ -119,8 +142,12 @@ const DownloadProgress = () => {
       return `${task.message} ${task.progress}%`
     case 'success':
       return '安装完成'
-    case 'failed':
-      return `安装失败: ${task.error || '未知错误'}`
+    case 'failed': {
+      // 显示错误信息，如果有详情则一并显示
+      const errorMsg = task.error || '未知错误'
+      const detail = task.errorDetail && task.errorDetail !== errorMsg ? ` (${task.errorDetail})` : ''
+      return `${errorMsg}${detail}`
+    }
     default:
       return task.message
     }
@@ -139,8 +166,19 @@ const DownloadProgress = () => {
         </button>
       )
     case 'installing':
-      // 正在安装的任务显示进度（不允许取消）
-      return <TaskProgressIcon percentage={task.progress} status={task.status} />
+      // 正在安装的任务显示进度和取消按钮
+      return (
+        <div className={styles.downloadIcon}>
+          <TaskProgressIcon percentage={task.progress} status={task.status} />
+          <button
+            className={styles.cancelDownload}
+            onClick={() => handleCancelInstall(task)}
+            title="取消安装"
+          >
+            ×
+          </button>
+        </div>
+      )
     case 'success':
       // 安装成功显示打开按钮
       return (
