@@ -105,7 +105,6 @@ const DownloadProgress = () => {
    */
   const handleRemoveFromQueue = (taskId: string) => {
     removeFromQueue(taskId)
-    messageApi.success('已从队列中移除')
   }
 
   /**
@@ -122,7 +121,7 @@ const DownloadProgress = () => {
       onOk: async() => {
         try {
           await cancelInstall(task.appId)
-          messageApi.info('已发送取消请求')
+          handleRemoveFromQueue(task.id)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
           messageApi.error(`取消失败: ${errorMessage}`)
@@ -137,7 +136,7 @@ const DownloadProgress = () => {
   const renderStatusText = (task: Store.InstallTask) => {
     switch (task.status) {
     case 'pending':
-      return `等待中 (队列位置: ${queue.findIndex((t) => t.id === task.id) + 1})`
+      return '等待中'
     case 'installing':
       return `${task.message} ${task.progress}%`
     case 'success':
@@ -159,7 +158,6 @@ const DownloadProgress = () => {
   const renderTaskActions = (task: Store.InstallTask) => {
     switch (task.status) {
     case 'pending':
-      // 待安装的任务可以移除
       return (
         <button className={styles.closeBtn} onClick={() => handleRemoveFromQueue(task.id)}>
             ×
@@ -170,13 +168,13 @@ const DownloadProgress = () => {
       return (
         <div className={styles.downloadIcon}>
           <TaskProgressIcon percentage={task.progress} status={task.status} />
-          <button
+          <div
             className={styles.cancelDownload}
             onClick={() => handleCancelInstall(task)}
             title="取消安装"
           >
             ×
-          </button>
+          </div>
         </div>
       )
     case 'success':
@@ -186,11 +184,30 @@ const DownloadProgress = () => {
           <button className={styles.downloadBtn} onClick={() => handleOpenApp(task.appId)}>
               打开
           </button>
+          <div
+            className={styles.cancelDownload}
+            onClick={() => handleRemoveFromQueue(task.id)}
+            title="移除"
+          >
+            ×
+          </div>
         </div>
       )
     case 'failed':
       // 安装失败显示错误状态
-      return <TaskProgressIcon percentage={0} status={task.status} />
+      // return <TaskProgressIcon percentage={0} status={task.status} />
+      return (
+        <div className={styles.downloadIcon}>
+          <TaskProgressIcon percentage={0} status={task.status} />
+          <div
+            className={styles.cancelDownload}
+            onClick={() => handleRemoveFromQueue(task.id)}
+            title="移除"
+          >
+            ×
+          </div>
+        </div>
+      )
     default:
       return null
     }

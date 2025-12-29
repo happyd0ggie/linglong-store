@@ -22,6 +22,8 @@ export const useGlobalInstallProgress = () => {
   const checkUpdates = useUpdatesStore((state) => state.checkUpdates)
   const checkingUpdates = useUpdatesStore((state) => state.checking)
   const fetchInstalledApps = useInstalledAppsStore((state) => state.fetchInstalledApps)
+  const [messageApi] = message.useMessage()
+
 
   useEffect(() => {
     let unlistenProgress: (() => void) | null = null
@@ -47,7 +49,7 @@ export const useGlobalInstallProgress = () => {
             markSuccess(progress.appId)
 
             // 显示成功消息
-            message.success({
+            messageApi.success({
               content: `${appName} 安装成功！`,
               key: `install-success-${progress.appId}`,
             })
@@ -95,13 +97,13 @@ export const useGlobalInstallProgress = () => {
           // 根据错误码类型显示不同的消息
           if (errorCode === InstallErrorCode.Cancelled) {
             // 取消操作使用 info 级别
-            message.info({
+            messageApi.info({
               content: `${appName} 安装已取消`,
               key: `install-cancelled-${progress.appId}`,
             })
           } else {
             // 其他错误使用 error 级别
-            message.error({
+            messageApi.error({
               content: `${appName} ${errorMessage}`,
               key: `install-failed-${progress.appId}`,
             })
@@ -123,7 +125,7 @@ export const useGlobalInstallProgress = () => {
           // 检查是否安装完成
           if (progress.percentage >= 100 || progress.status.includes('安装完成')) {
             markSuccess(progress.appId)
-            message.success({
+            messageApi.success({
               content: `${appName} 安装成功！`,
               key: `install-success-${progress.appId}`,
             })
@@ -139,7 +141,7 @@ export const useGlobalInstallProgress = () => {
           // 检查是否安装失败
           if (progress.status.includes('失败') || progress.status.includes('取消')) {
             markFailed(progress.appId, progress.status)
-            message.error({
+            messageApi.error({
               content: `${appName} ${progress.status}`,
               key: `install-failed-${progress.appId}`,
             })

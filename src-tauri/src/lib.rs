@@ -6,7 +6,7 @@ use tauri::Manager;
 use log::LevelFilter;
 use services::network::{get_network_speed as network_get_speed, NetworkSpeed};
 use services::process::{get_running_linglong_apps as process_get_running_apps, kill_linglong_app as process_kill_app, LinglongAppInfo};
-use services::installed::{
+use services::{
     get_installed_apps,
     uninstall_linglong_app,
     search_app_versions,
@@ -118,7 +118,7 @@ async fn cancel_install(
 ) -> Result<String, String> {
     log::info!("[cancel_install] Command invoked: app_id={}", app_id);
     let result = cancel_linglong_install(app_handle, app_id.clone()).await;
-    log::info!("[cancel_install] Command result for {}: {:?}", app_id, result);
+    log::info!("[cancel_install] Command result: {:?}", result);
     result
 }
 

@@ -104,6 +104,8 @@ export const useAppInstall = () => {
   const { enqueueInstall, enqueueBatch, isAppInQueue, getAppInstallStatus, currentTask, queue } =
     useInstallQueueStore()
   const installedApps = useInstalledAppsStore((state) => state.installedApps)
+  const [messageApi] = message.useMessage()
+
 
   /**
    * 安装单个应用
@@ -114,13 +116,13 @@ export const useAppInstall = () => {
     async(app: AppInfo, options?: InstallOptions) => {
       if (!app?.appId) {
         console.error('[useAppInstall] ❌ App ID is missing!')
-        message.error('应用信息不完整')
+        messageApi.error('应用信息不完整')
         return
       }
 
       // 检查是否已在队列中
       if (isAppInQueue(app.appId)) {
-        message.warning(`${app.zhName || app.name || app.appId} 已在安装队列中`)
+        messageApi.warning(`${app.zhName || app.name || app.appId} 已在安装队列中`)
         return
       }
 
@@ -144,7 +146,7 @@ export const useAppInstall = () => {
       const taskId = enqueueInstall(app, { version, force })
       console.info(`[useAppInstall] Task enqueued: ${taskId} for app: ${app.appId}`)
 
-      message.info({
+      messageApi.info({
         content: `${app.zhName || app.name || app.appId} 开始安装`,
         key: `enqueue-${app.appId}`,
       })
@@ -162,13 +164,13 @@ export const useAppInstall = () => {
       const filteredApps = apps.filter((item) => !isAppInQueue(item.appInfo.appId || ''))
 
       if (filteredApps.length === 0) {
-        message.warning('所有应用都已在安装队列中')
+        messageApi.warning('所有应用都已在安装队列中')
         return []
       }
 
       const taskIds = enqueueBatch(filteredApps)
 
-      message.info({
+      messageApi.info({
         content: `已将 ${taskIds.length} 个应用加入安装队列`,
         key: 'batch-enqueue',
       })
