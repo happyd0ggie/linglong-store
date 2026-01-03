@@ -147,6 +147,7 @@ const Process = () => {
           <Button
             type='primary'
             size='small'
+            shape='round'
             onClick={() => enterContainerClick(record)}
           >
             进入容器
@@ -154,6 +155,7 @@ const Process = () => {
           <Button
             type='primary'
             size='small'
+            shape='round'
             danger
             onClick={() => processClick(record)}
             loading={loading === record.name}

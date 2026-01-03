@@ -341,6 +341,7 @@ const AppDetail = () => {
                 key={`${versionValue}-run`}
                 type='primary'
                 size='small'
+                shape='round'
                 onClick={() => handleRun()}
                 disabled={isUninstalling}
               >
@@ -351,6 +352,7 @@ const AppDetail = () => {
                 type='primary'
                 danger
                 size='small'
+                shape='round'
                 onClick={() => handleUninstall(versionValue)}
                 loading={isUninstalling}
                 disabled={isAppInstallBusy}
@@ -361,6 +363,7 @@ const AppDetail = () => {
               <Button
                 type='primary'
                 size='small'
+                shape='round'
                 onClick={() => handleVersionInstall(versionInfo)}
                 loading={isActiveInstalling}
                 disabled={isUninstalling || isActivePending || isActiveInstalling || shouldDisableForBusy}
