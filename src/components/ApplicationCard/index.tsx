@@ -205,6 +205,7 @@ const ApplicationCard = ({
       <div className={styles.actions}>
         <Button
           type='primary'
+          shape='round'
           style={
             resolvedOperateId === OperateType.OPEN
               ? { backgroundColor: '#1AD56C', borderColor: '#1AD56C' } // 绿色
