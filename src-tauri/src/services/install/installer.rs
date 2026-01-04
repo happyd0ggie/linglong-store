@@ -347,7 +347,6 @@ pub async fn cancel_linglong_install(
     let _output = std::process::Command::new("pkexec")
         .arg("killall")
         .arg("-15") // SIGTERM 优雅终止
-        .arg("ll-package-manager")
         .arg("ll-cli")
         .output();
 
