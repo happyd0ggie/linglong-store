@@ -156,7 +156,7 @@ export const sendInstallRecord = async(appInfo: API.APP.InstalledRecordItem): Pr
  * @param appInfo 卸载的应用信息
  */
 export const sendUninstallRecord = async(appInfo: API.APP.InstalledRecordItem): Promise<void> => {
-  if (!import.meta.env.VITE_ENABLE_ANALYTICS_DEV) {
+  if (import.meta.env.VITE_ENABLE_ANALYTICS_DEV === 'false') {
     console.info('[analytics] Uninstall record skipped (dev mode, set VITE_ENABLE_ANALYTICS_DEV=true to enable)')
     return
   }
