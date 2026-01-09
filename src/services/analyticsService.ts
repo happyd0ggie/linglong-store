@@ -94,7 +94,7 @@ export const initAnalytics = async(): Promise<void> => {
  */
 export const sendVisitRecord = async(): Promise<void> => {
   // 只在生产环境发送（除非显式开启开发模式统计）
-  if (!import.meta.env.VITE_ENABLE_ANALYTICS_DEV) {
+  if (import.meta.env.VITE_ENABLE_ANALYTICS_DEV === 'false') {
     console.info('[analytics] Visit record skipped (dev mode, set VITE_ENABLE_ANALYTICS_DEV=true to enable)')
     return
   }
@@ -114,6 +114,8 @@ export const sendVisitRecord = async(): Promise<void> => {
   }
 
   try {
+    console.info('type import.meta.env.VITE_ENABLE_ANALYTICS_DEV', typeof import.meta.env.VITE_ENABLE_ANALYTICS_DEV)
+    console.info(999999999999)
     await saveVisitRecord(data)
     console.info('[analytics] Visit record sent successfully')
   } catch (error) {
@@ -127,7 +129,7 @@ export const sendVisitRecord = async(): Promise<void> => {
  * @param appInfo 安装的应用信息
  */
 export const sendInstallRecord = async(appInfo: API.APP.InstalledRecordItem): Promise<void> => {
-  if (!import.meta.env.VITE_ENABLE_ANALYTICS_DEV) {
+  if (import.meta.env.VITE_ENABLE_ANALYTICS_DEV === 'false') {
     console.info('[analytics] Install record skipped (dev mode, set VITE_ENABLE_ANALYTICS_DEV=true to enable)')
     return
   }
