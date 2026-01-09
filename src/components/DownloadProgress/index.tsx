@@ -5,7 +5,7 @@
 import styles from './index.module.scss'
 import { useMemo } from 'react'
 import DefaultIcon from '@/assets/linyaps.svg?url'
-import { Progress, Empty, message, Modal } from 'antd'
+import { Progress, Empty, message } from 'antd'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { runApp, cancelInstall } from '@/apis/invoke'
 
@@ -110,24 +110,15 @@ const DownloadProgress = () => {
   /**
    * 取消正在进行的安装
    */
-  const handleCancelInstall = (task: Store.InstallTask) => {
-    Modal.confirm({
-      title: '取消安装',
-      content: `确定要取消安装 ${task.appInfo?.zhName || task.appInfo?.name || '该应用'} 吗？`,
-      okText: '确定取消',
-      cancelText: '继续安装',
-      centered: true,
-      okButtonProps: { danger: true },
-      onOk: async() => {
-        try {
-          await cancelInstall(task.appId)
-          handleRemoveFromQueue(task.id)
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error)
-          messageApi.error(`取消失败: ${errorMessage}`)
-        }
-      },
-    })
+  const handleCancelInstall = async(task: Store.InstallTask) => {
+    try {
+      await cancelInstall(task.appId)
+      handleRemoveFromQueue(task.id)
+      messageApi.success('取消安装成功')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      messageApi.error(`取消失败: ${errorMessage}`)
+    }
   }
 
   /**
