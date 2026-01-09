@@ -122,6 +122,12 @@ async fn cancel_install(
     result
 }
 
+#[tauri::command]
+async fn quit_app(app: tauri::AppHandle) {
+    log::info!("[quit_app] Command invoked");
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let did_auto_disable_dmabuf = if webkit_dmabuf::should_disable_webkit_dmabuf_renderer() {
@@ -182,6 +188,7 @@ pub fn run() {
             get_ll_cli_version_cmd,
             check_linglong_env_cmd,
             install_linglong_env_cmd,
+            quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -236,6 +236,16 @@ export const useInstallQueueStore = create<Store.InstallQueue>((set, get) => ({
     set({ history: [] })
   },
 
+  clearQueue: () => {
+    set({ queue: [] })
+    console.info('[InstallQueue] Queue cleared')
+  },
+
+  hasActiveTasks: () => {
+    const state = get()
+    return state.currentTask !== null || state.queue.length > 0
+  },
+
   removeFromQueue: (taskId) => {
     set((state) => ({
       queue: state.queue.filter((t) => t.id !== taskId),

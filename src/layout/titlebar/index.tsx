@@ -4,10 +4,11 @@
  */
 
 import styles from './index.module.scss'
-import { SetStateAction, useEffect, useState } from 'react'
+import { SetStateAction, useCallback, useEffect, useState } from 'react'
 import { Close, Copy, Minus, Square } from '@icon-park/react'
-import { Popover, message } from 'antd'
+import { Popover, Modal, message } from 'antd'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { cancelInstall, quitApp, onTrayQuit } from '@/apis/invoke'
 import { useConfigStore } from '@/stores/appConfig'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useSearchStore } from '@/stores/global'
@@ -27,6 +28,10 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
   const closeOrHide = useConfigStore((state) => state.closeOrHide)
   /** 当前安装任务 */
   const currentTask = useInstallQueueStore((state) => state.currentTask)
+  /** 检查是否有正在进行的安装任务 */
+  const hasActiveTasks = useInstallQueueStore((state) => state.hasActiveTasks)
+  /** 清空待安装队列 */
+  const clearQueue = useInstallQueueStore((state) => state.clearQueue)
   /** 全局搜索关键词 */
   const keyword = useSearchStore((state) => state.keyword)
   /** 更新搜索关键词的方法 */
@@ -82,6 +87,70 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
   }, [appWindow])
 
   /**
+   * 统一的退出确认逻辑
+   * 检查是否有安装任务，有则弹出确认框
+   */
+  const handleQuit = useCallback(async() => {
+    try {
+      // 检查是否有安装任务
+      if (hasActiveTasks()) {
+        Modal.confirm({
+          title: '有安装任务正在进行',
+          content: '当前有应用正在安装或等待安装，退出将会取消这些安装任务。确定要退出吗？',
+          okText: '取消安装并退出',
+          cancelText: '暂不退出',
+          okButtonProps: { danger: true },
+          onOk: async() => {
+            try {
+              // 取消当前正在进行的安装
+              if (currentTask) {
+                await cancelInstall(currentTask.appId)
+              }
+              // 清空待安装队列
+              clearQueue()
+              // 调用 Rust 端退出命令
+              await quitApp()
+            } catch (error) {
+              console.error('Failed to cancel install and quit:', error)
+              // 即使取消失败也尝试退出
+              await quitApp()
+            }
+          },
+        })
+        return
+      }
+
+      // 没有安装任务，直接退出
+      await quitApp()
+    } catch (error) {
+      console.error('Failed to quit:', error)
+    }
+  }, [hasActiveTasks, currentTask, clearQueue])
+
+  /**
+   * 监听托盘退出事件
+   * 当用户点击托盘的"退出程序"时，触发统一的退出确认逻辑
+   */
+  useEffect(() => {
+    let unlisten: (() => void) | null = null
+
+    const setupTrayQuitListener = async() => {
+      unlisten = await onTrayQuit(() => {
+        console.info('[Titlebar] Tray quit event received')
+        handleQuit()
+      })
+    }
+
+    setupTrayQuitListener()
+
+    return () => {
+      if (unlisten) {
+        unlisten()
+      }
+    }
+  }, [handleQuit])
+
+  /**
    * 最小化窗口
    */
   const handleMinimize = async() => {
@@ -94,22 +163,18 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
 
   /**
    * 关闭窗口
+   * 如果是退出应用且有安装任务，需要确认是否取消安装后退出
    */
   const handleClose = async() => {
     try {
-      switch (closeOrHide) {
-      case 'hide':
+      // 隐藏到托盘时直接隐藏，不检查安装任务
+      if (closeOrHide === 'hide') {
         await appWindow.hide()
-        break
-      case 'close':
-        await appWindow.close()
-        break
-
-      default:
-        await appWindow.close()
-        break
+        return
       }
 
+      // 退出应用，执行统一的退出确认逻辑
+      handleQuit()
     } catch (error) {
       console.error('Failed to close:', error)
     }

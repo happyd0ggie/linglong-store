@@ -239,6 +239,16 @@ declare namespace Store {
     clearHistory: () => void
 
     /**
+     * 清空待安装队列（用于退出时取消所有待安装任务）
+     */
+    clearQueue: () => void
+
+    /**
+     * 检查是否有正在进行或待处理的安装任务
+     */
+    hasActiveTasks: () => boolean
+
+    /**
      * 从队列中移除待安装任务（仅限 pending 状态）
      * @param taskId - 任务ID
      */
