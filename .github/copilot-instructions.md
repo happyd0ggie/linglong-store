@@ -434,6 +434,9 @@ v2.0.0 从 Electron 迁移到 Tauri。主要变更：
 - 将 `ll-cli` 执行从 Node.js 迁移到 Rust
 - Zustand stores 替换 Redux
 
+## 变更记录
+- WebKit DMABUF 回退：检测到 NVIDIA GPU 时自动设置 `WEBKIT_DISABLE_DMABUF_RENDERER=1`（集中在 `src-tauri/src/utils/linux/workarounds.rs`，启动时以 warn 记录）
+
 ## 关键参考文件
 - **类型系统**：`src/types/common.d.ts`、`src/types/api/common.d.ts`
 - **API 模式**：`src/apis/request.ts`、`src/apis/apps/index.ts`
