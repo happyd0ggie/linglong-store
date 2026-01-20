@@ -34,6 +34,7 @@ export const useGlobalStore = create<Store.Global>((set) => ({
   llBinVersion: '',
   detailMsg: '',
   repos: [],
+  isContainer: false,
   // 匿名统计相关
   visitorId: '',
   clientIp: '',

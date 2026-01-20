@@ -40,8 +40,8 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
   const [currentStep, setCurrentStep] = useState<string>('初始化应用')
 
   // ==================== Store 状态和方法 ====================
-  // 全局状态
-  const { onInited, setArch, setAppVersion } = useGlobalStore()
+  // 状态管理
+  const { onInited, setArch, setAppVersion, isContainer } = useGlobalStore()
 
   // 配置状态
   const { showBaseService, checkVersion } = useConfigStore()
@@ -115,6 +115,12 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
         return
       }
 
+      // 容器内不检查更新（文件系统只读，无法更新）
+      if (isContainer) {
+        console.info('[launch] 容器内运行，跳过商店版本检查')
+        return
+      }
+
       console.info('检查商店版本更新，当前版本:', version)
 
       // 静默检查更新（不显示提示）
@@ -123,7 +129,7 @@ export const useLaunch = (): Hooks.Launch.UseLaunchReturn => {
       // 版本检查失败不阻断初始化
       console.warn('检查商店版本失败:', err)
     }
-  }, [checkVersion, checkForUpdate])
+  }, [checkVersion, checkForUpdate, isContainer])
 
   /**
    * 步骤5: 恢复中断的安装任务
