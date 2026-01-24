@@ -1,49 +1,22 @@
 import styles from './index.module.scss'
-import { Button } from 'antd'
-import { DoubleUp, DoubleDown } from '@icon-park/react'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useEffect, useState, useRef } from 'react'
-import { getDisCategoryList, getSearchAppList } from '@/apis/apps/index'
+import { getSearchAppList } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
-import { generateEmptyCards, generateEmptyCategories } from './utils'
+import { generateEmptyCards } from './utils'
 import { OperateType } from '@/constants/applicationCard'
-
+import { Select, Checkbox } from 'antd'
 const defaultPageSize = 30 // 每页显示数量
-const defaultCategorySize = 22 // 默认分类数量
-
-type Category = API.APP.AppCategories
 type AppInfo = API.APP.AppMainDto
-
-
-const AllApps = () => {
+const OfficeApps = () => {
   const arch = useGlobalStore((state) => state.arch)
   const repoName = useGlobalStore((state) => state.repoName)
-  const [activeCategory, setActiveCategory] = useState<string>('')
+  const [activeCategory] = useState<string>('')
   const [pageNo, setPageNo] = useState<number>(1)
   const [loading, setLoading] = useState<boolean>(false)
   const [totalPages, setTotalPages] = useState<number>(1)
-  const [categoryList, setCategoryList] = useState<Category[]>([])
   const [allAppList, setAllAppList] = useState<AppInfo[]>([])
   const listRef = useRef<HTMLDivElement>(null)
-
-  // 获取分类列表
-  const getCategoryList = async() => {
-    setCategoryList(generateEmptyCategories(defaultCategorySize))
-    try {
-      const result = await getDisCategoryList()
-      const categories = [
-        {
-          id: 'all',
-          categoryId: '',
-          categoryName: '全部应用',
-        } as Category,
-        ...(result.data || []),
-      ]
-      setCategoryList(categories)
-    } catch (error) {
-      console.error('获取分类列表失败:', error)
-    }
-  }
 
   // 获取应用列表
   const getAllAppList = ({ categoryId = '', pageNo = 1, init = false }) => {
@@ -87,57 +60,10 @@ const AllApps = () => {
     }
   }
 
-  const handleCategoryChange = (categoryId: string) => {
-    // 立即滚动到顶部（异步以确保 DOM 已更新）
-    setTimeout(() => {
-      const listElement = listRef.current
-      if (listElement) {
-        listElement.scrollTo({ top: 0, behavior: 'smooth' })
-      }
-    }, 0)
-
-    setActiveCategory(categoryId)
-    setPageNo(1)
-    getAllAppList({ categoryId, init: true })
-    setTabOpen(true)
-  }
-
-  // 设置分类展开或者折叠
-  const [tabOpen, setTabOpen] = useState(true)
-  const handleTabToggle = () => {
-    setTabOpen(tabOpen => !tabOpen)
-  }
-
   // 初始化获取数据
   useEffect(() => {
-    getCategoryList()
     getAllAppList({ init: true })
   }, [])
-
-  // 监听窗口 resize 事件，调整分类栏高度
-  const [tabHeight, setTabHeight] = useState(0)
-  const [tabTranslateY, setTabTranslateY] = useState(0)
-  const tabListRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const updateTabHeight = () => {
-      const tabListElement = tabListRef.current
-      const activeButton = tabListElement?.querySelector<HTMLButtonElement>('button[data-active="true"]')
-      // 获取激活的按钮当前高度
-      const collapsedHeight = activeButton ? activeButton.offsetTop : 0
-      if (tabListElement) {
-        const fullHeight = tabListElement.scrollHeight
-        setTabHeight(fullHeight + 24) // 高度加上内边距
-        setTabTranslateY(collapsedHeight - 8)
-      }
-    }
-
-    updateTabHeight() // 初始调用一次
-
-    window.addEventListener('resize', updateTabHeight)
-    return () => {
-      window.removeEventListener('resize', updateTabHeight)
-    }
-  }, [categoryList, activeCategory])
 
   // 监听滚动
   useEffect(() => {
@@ -148,14 +74,6 @@ const AllApps = () => {
       const listElement = listRef.current
       if (listElement) {
         const { scrollTop, scrollHeight, clientHeight } = listElement
-
-        // 滚动到顶部时打开标签栏，否则关闭
-        if (scrollTop <= 10) {
-          setTabOpen(true)
-        } else {
-          setTabOpen(false)
-        }
-
         // 滚动到底部时加载更多
         if (scrollTop + clientHeight >= scrollHeight - 100) {
           if (pageNo < totalPages) {
@@ -178,25 +96,22 @@ const AllApps = () => {
     }
   }, [activeCategory, pageNo, totalPages, loading])
 
-  return <div className={styles.allAppsPage} ref={listRef} >
-    <div className={styles.tabBtn} style={{ height: tabOpen ? 'auto' : '3.6em' }}>
-      <div className={styles.tabBtnList} ref={tabListRef} style={{ transform: tabOpen ? 'none' : `translateY(-${tabTranslateY}px)` }}>
-        {categoryList.map(item=>{
-          return <Button
-            shape='round'
-            type={activeCategory === item.categoryId ? 'primary' : 'default'}
-            key={item.id}
-            data-active={activeCategory === item.categoryId}
-            className={styles.btn}
-            onClick={()=>handleCategoryChange(item.categoryId)}
-          >
-            {item.categoryName}
-          </Button>
-        })}
+  return <div className={styles.officeAppsPage} ref={listRef} >
+    <div className={styles.search} >
+      <h3>办公</h3>
+      <div className={styles.searchBox}>
+        <Select
+          defaultValue="update"
+          style={{ minWidth: '5rem', maxWidth: '20rem', flex: 1 }}
+          options={[
+            { value: 'update', label: '按更新排序' },
+            { value: 'download', label: '按下载排序' },
+          ]}
+        />
+        <Checkbox>过滤低分应用</Checkbox>
       </div>
-      <div className={styles.tabShrink} onClick={handleTabToggle}>{tabOpen ? <DoubleUp theme="outline" size="16" fill="#333"/> : <DoubleDown theme="outline" size="16" fill="#333"/>}</div>
     </div>
-    <div className={styles.applicationList} style={{ marginTop: `${tabHeight}px` }}>
+    <div className={styles.applicationList}>
       {
         allAppList.map((item, index) => {
           return (
@@ -214,4 +129,4 @@ const AllApps = () => {
   </div>
 }
 
-export default AllApps
+export default OfficeApps
