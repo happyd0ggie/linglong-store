@@ -7,9 +7,7 @@ import { useGlobalInstallProgress } from '@/hooks/useGlobalInstallProgress'
 const Recommend = lazy(() => import('../pages/recommend'))
 const Ranking = lazy(() => import('../pages/ranking'))
 const AllApps = lazy(() => import('../pages/allApps'))
-const About = lazy(() => import('../pages/about'))
 const Setting = lazy(() => import('../pages/setting'))
-const Process = lazy(()=>import('../pages/process'))
 const UpdateApp = lazy(()=>import('../pages/updateApp'))
 const MyApplication = lazy(()=>import('../pages/myApps'))
 const AppDetail = lazy(()=>import('../pages/appDetail'))
@@ -34,16 +32,8 @@ const router = createBrowserRouter([
         element: <AllApps />,
       },
       {
-        path: '/about',
-        element: <About />,
-      },
-      {
         path: '/setting',
         element: <Setting />,
-      },
-      {
-        path: '/process',
-        element: <Process />,
       },
       {
         path: '/update_apps',

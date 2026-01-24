@@ -57,21 +57,17 @@ const SpeedTool = () => {
   return (
     <div className={styles.speedTool}>
       <div className={styles.speedToolItem}>
-        <div className={styles.speedToolItemIcon}>
-          <Upload theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>
-        </div>
+        <Download theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>
         <div className={styles.speedToolItemText}>
-          <span className={styles.speedToolItemTextTitle}>上传速度</span>
-          <span className={styles.speedToolItemTextValue}>{formatSpeed(networkSpeed.upload_speed)}</span>
+          <span className={styles.speedToolItemTextTitle}>下载</span>
+          <span className={styles.speedToolItemTextValue}>{formatSpeed(networkSpeed.download_speed)}</span>
         </div>
       </div>
       <div className={styles.speedToolItem}>
-        <div className={styles.speedToolItemIcon}>
-          <Download theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>
-        </div>
+        <Upload theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>
         <div className={styles.speedToolItemText}>
-          <span className={styles.speedToolItemTextTitle}>下载速度</span>
-          <span className={styles.speedToolItemTextValue}>{formatSpeed(networkSpeed.download_speed)}</span>
+          <span className={styles.speedToolItemTextTitle}>上传</span>
+          <span className={styles.speedToolItemTextValue}>{formatSpeed(networkSpeed.upload_speed)}</span>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Table, Button, message } from 'antd'
 import { useState, useEffect } from 'react'
 import { getRunningLinglongApps, killLinglongApp } from '@/apis/invoke'
-
+import styles from './index.module.scss'
 interface LinglongAppInfo {
   key: string
   name: string
@@ -168,7 +168,7 @@ const Process = () => {
   ]
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className={styles.linglongProcess} >
       <Table
         columns={columns}
         dataSource={data}

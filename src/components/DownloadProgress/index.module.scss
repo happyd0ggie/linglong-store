@@ -1,5 +1,5 @@
 .downloadContainer {
-    width: 18.75rem;
+    width: 100%;
     height: 18.75rem;
     display: flex;
     flex-flow: column nowrap;
@@ -18,7 +18,8 @@
         overflow-y: scroll;
         scrollbar-gutter: stable both-edges;
         padding-top: 0.5rem;
-        padding-right: 0.6rem; /* fallback: 预留空间防止覆盖叉号 */
+        padding-right: 0.6rem;
+        /* fallback: 预留空间防止覆盖叉号 */
 
         .downloadItem {
             width: 100%;
@@ -92,7 +93,8 @@
                         border-radius: 1rem;
                         font-size: 1rem;
                         color: var(--ant-color-warning);
-                        padding: 0.125rem 0.25rem; /* 增加可点击区域 */
+                        padding: 0.125rem 0.25rem;
+                        /* 增加可点击区域 */
                         line-height: 1;
                         z-index: 2;
                     }
@@ -140,11 +142,22 @@
 
     }
 
-    .downloadFooter {
+    .speedToolAndDownloadFooter {
         width: 100%;
-        font-size: 0.625rem;
-        text-align: right;
-        color: var(--ant-color-primary-text);
-        cursor: pointer;
+        display: flex;
+        align-items: start;
+        gap: 0.5rem;
+        justify-content: space-between;
+        line-height: 1rem;
+
+
+        .downloadFooter {
+            width: 100%;
+            font-size: 0.625rem;
+            text-align: right;
+            color: var(--ant-color-primary-text);
+            cursor: pointer;
+        }
+
     }
 }

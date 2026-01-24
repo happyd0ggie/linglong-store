@@ -1,4 +1,4 @@
-import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message } from 'antd'
+import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message, Upload, type UploadProps } from 'antd'
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
 import update from '@/assets/icons/update.svg'
@@ -17,6 +17,28 @@ type FieldType = {
 // 问题类型
 const feedOptions = ['商店缺陷', '应用更新', '应用故障']
 
+/**
+ * 日志上传配置
+ *
+ * @type {UploadProps}
+ */
+const uploadProps: UploadProps = {
+  name: 'file',
+  action: 'https://660d2bd96ddfa2943b33731c.mockapi.io/api/upload',
+  headers: {
+    authorization: 'authorization-text',
+  },
+  onChange(info) {
+    if (info.file.status !== 'uploading') {
+      console.log(info.file, info.fileList)
+    }
+    if (info.file.status === 'done') {
+      message.success(`${info.file.name} file uploaded successfully`)
+    } else if (info.file.status === 'error') {
+      message.error(`${info.file.name} file upload failed.`)
+    }
+  },
+}
 const AboutSoft = () => {
   const [open, setOpen] = useState(false)
   const [messageApi, contextHolder] = message.useMessage()
@@ -194,6 +216,11 @@ const AboutSoft = () => {
           </Form.Item>
           <Form.Item colon label="描述" name='description'>
             <TextArea rows={6} />
+          </Form.Item>
+          <Form.Item colon label="日志" name='log'>
+            <Upload {...uploadProps}>
+              <Button>上传日志</Button>
+            </Upload>
           </Form.Item>
           <Form.Item>
             <div style={{ textAlign: 'right' }}>

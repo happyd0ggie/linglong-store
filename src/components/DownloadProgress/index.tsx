@@ -8,7 +8,7 @@ import DefaultIcon from '@/assets/linyaps.svg?url'
 import { Progress, Empty, message } from 'antd'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { runApp, cancelInstall } from '@/apis/invoke'
-
+import SpeedTool from '@/components/speedTool'
 /**
  * 任务进度图标组件
  */
@@ -229,12 +229,15 @@ const DownloadProgress = () => {
             <Empty description="暂无安装任务" />
           )}
         </div>
-        {contextHolder}
-        {history.length > 0 ? (
-          <div className={styles.downloadFooter} onClick={cleanDownloadHistory}>
+        <div className={styles.speedToolAndDownloadFooter}>
+          <SpeedTool />
+          {contextHolder}
+          {history.length > 0 ? (
+            <div className={styles.downloadFooter} onClick={cleanDownloadHistory}>
             清除下载记录
-          </div>
-        ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
     </>
   )
