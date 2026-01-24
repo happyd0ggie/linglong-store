@@ -52,7 +52,8 @@ const Sidebar = ({ className }: { className: string }) => {
                 style={{ cursor: 'pointer' }}
               >
                 <span className={styles.menuItemIcon}>
-                  {isActive ? item.activeIcon : item.icon}
+                  <img src={isActive ? item.activeIcon : item.icon} alt={item.menuName} />
+                  {/* {isActive ? item.activeIcon : item.icon} */}
                 </span>
                 <Badge
                   count={badgeCount}

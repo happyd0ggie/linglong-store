@@ -12,7 +12,10 @@ const UpdateApp = lazy(()=>import('../pages/updateApp'))
 const MyApplication = lazy(()=>import('../pages/myApps'))
 const AppDetail = lazy(()=>import('../pages/appDetail'))
 const SearchList = lazy(()=>import('../pages/searchList'))
-
+const OfficeApps = lazy(()=>import('../pages/officeApps'))
+const GameApps = lazy(()=>import('../pages/gameApps'))
+const SystemApps = lazy(()=>import('../pages/systemApps'))
+const DevelopApps = lazy(()=>import('../pages/developApps'))
 // 路由配置
 const router = createBrowserRouter([
   {
@@ -30,6 +33,22 @@ const router = createBrowserRouter([
       {
         path: '/allapps',
         element: <AllApps />,
+      },
+      {
+        path: '/officeapps',
+        element: <OfficeApps />,
+      },
+      {
+        path: '/systemapps',
+        element: <SystemApps />,
+      },
+      {
+        path: '/developapps',
+        element: <DevelopApps />,
+      },
+      {
+        path: '/gameapps',
+        element: <GameApps />,
       },
       {
         path: '/setting',

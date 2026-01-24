@@ -1,11 +1,12 @@
-import { Star, ApplicationOne, UpdateRotation, Ranking } from '@icon-park/react'
-
+import { ApplicationOne, UpdateRotation, Ranking } from '@icon-park/react'
+import recommend from '@/assets/icons/recommend.svg'
+import recommendActive from '@/assets/icons/recommendA.svg'
 export default [
   {
-    menuName: '玲珑推荐',
+    menuName: '推荐',
     menuPath: '/',
-    icon: <Star theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <Star theme="filled" size="16" fill="var(--ant-color-primary-text)"/>,
+    icon: recommend,
+    activeIcon: recommendActive,
     show: true,
     index: 0,
   },

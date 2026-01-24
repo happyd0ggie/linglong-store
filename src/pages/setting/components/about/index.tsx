@@ -1,7 +1,7 @@
 import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message, Upload, type UploadProps } from 'antd'
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
-import update from '@/assets/icons/update.svg'
+import upgradeApp from '@/assets/icons/upgradeApp.svg'
 import { useState, useEffect, useMemo } from 'react'
 import { getLlCliVersion } from '@/apis/invoke'
 import { getSearchAppList, suggest } from '@/apis/apps/index'
@@ -197,7 +197,7 @@ const AboutSoft = () => {
       <div className={styles.feedback}>
         <div className={styles.feed} onClick={feedbackClick}>  <img style={{ width: '1.1rem', height: '1.1rem' }} src={feedback} alt="意见反馈" /><span>意见反馈</span></div>
         {contextHolder}
-        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={update} alt="检查新版本" /><span>检查版本</span></div>
+        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={upgradeApp} alt="检查新版本" /><span>检查版本</span></div>
       </div>
       <Drawer
         title="意见反馈"
