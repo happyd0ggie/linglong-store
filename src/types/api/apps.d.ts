@@ -285,6 +285,8 @@ declare namespace API {
             osVersion?: string
             /** 反馈意见内容 */
             message?: string
+            /** 日志文件链接 */
+            logFileUrl?: string
             /** 创建时间 */
             createTime?: string
             /** 是否删除 */
