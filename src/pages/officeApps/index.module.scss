@@ -26,12 +26,18 @@
     }
   }
 
-  .applicationList {
+  .recommendApplicationList {
     margin-top: 3rem;
+    display: flex;
+    gap: 1rem;
+  }
+
+  .applicationList {
+    margin-top: 2rem;
     flex: 1;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-    gap: 16px;
+    gap: 1rem;
     align-content: start;
     padding-bottom: 2rem;
 
@@ -52,14 +58,6 @@
         background: var(--color-fill-4);
       }
     }
-  }
-
-  /* 关键：使用 span 而不是固定列号 */
-  .applicationList>*:nth-child(1),
-  .applicationList>*:nth-child(2),
-  .applicationList>*:nth-child(3) {
-    grid-column: span 1;
-    /* 每个占据1列 */
   }
 
   .loadingTip,

@@ -12,6 +12,8 @@ declare namespace COMP {
       operateId?: number;
       /** 应用信息 */
       appInfo?: API.APP.AppMainDto;
+      /** 应用卡片类型，可选值有：default, recommend */
+      type?: string;
     }
   }
 }

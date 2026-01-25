@@ -111,6 +111,22 @@ const OfficeApps = () => {
         <Checkbox>过滤低分应用</Checkbox>
       </div>
     </div>
+    <div className={styles.recommendApplicationList}>
+      {
+        allAppList.map((item, index) => {
+          return index < 3 && (
+            <ApplicationCard
+              type="recommend"
+              key={`${item.appId}_${index}`}
+              appInfo={item}
+              operateId={OperateType.INSTALL}
+            />
+          )
+        })
+      }
+      {loading && <div className={styles.loadingTip}>加载中...</div>}
+      {totalPages <= pageNo && allAppList.length > 0 && <div className={styles.noMoreTip}>没有更多数据了</div>}
+    </div>
     <div className={styles.applicationList}>
       {
         allAppList.map((item, index) => {

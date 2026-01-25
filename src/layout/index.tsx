@@ -86,7 +86,7 @@ const AppLayout = () => {
   return (
     <div className={styles.layout}>
       {/* 标题栏组件，始终显示 */}
-      <Titlebar showSearch={isInited} showDownload={isInited} />
+      <Titlebar showSearch={isInited}/>
       {
         // 根据初始化状态决定显示启动页还是主布局
         isInited ? <div className={styles.layoutContent}>
