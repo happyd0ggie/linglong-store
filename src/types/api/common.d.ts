@@ -65,5 +65,19 @@ declare namespace API {
             /** 排序方式 desc/asc */
             order?: string
         }
+
+        /**
+         * 菜单分类
+         *
+         * @interface MenuCategory
+         * @typedef {MenuCategory}
+         */
+        interface MenuCategory {
+            id: number
+            name: string
+            parentId: number
+            children?: MenuCategory[]
+        }
     }
+
 }

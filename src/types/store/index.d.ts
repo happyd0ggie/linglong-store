@@ -67,7 +67,8 @@ declare namespace Store {
     /** 设备指纹ID（匿名统计用） */
     visitorId: string
     /** 客户端IP地址（匿名统计用） */
-    clientIp: string
+    clientIp: string,
+    customMenuCategory: API.APP.CustomMenuCategory[]
     /** 初始化完成回调 */
     onInited: () => void
     /** 更改系统架构 */
@@ -82,6 +83,13 @@ declare namespace Store {
     setVisitorId: (value: string) => void
     /** 设置客户端IP */
     setClientIp: (value: string) => void
+
+    /**
+     * 保存自定义菜单
+     *
+     * @type {(value: API.APP.CustomMenuCategory[]) => void}
+     */
+    setCustomMenuCategory: (value: API.APP.CustomMenuCategory[]) => void
   }
 
   /**

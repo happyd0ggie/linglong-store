@@ -5,7 +5,9 @@ import { get, post } from '..'
  * @returns 应用分类数组
  */
 export const getDisCategoryList = () => {
-  return get<API.Common.BaseResponse<API.APP.GetDisCategoryListRes[]>>('/visit/getDisCategoryList')
+  return get<API.Common.BaseResponse<API.APP.GetDisCategoryListRes[]>>(
+    '/visit/getDisCategoryList',
+  )
 }
 
 /**
@@ -14,7 +16,10 @@ export const getDisCategoryList = () => {
  * @returns 分页应用列表
  */
 export const getSearchAppList = (data: API.APP.SearchAppListParams) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>('/visit/getSearchAppList', data)
+  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>(
+    '/visit/getSearchAppList',
+    data,
+  )
 }
 
 /**
@@ -23,7 +28,10 @@ export const getSearchAppList = (data: API.APP.SearchAppListParams) => {
  * @returns 应用详情数组
  */
 export const getAppDetails = (data: API.APP.AppDetailsVO[]) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppDetailsRes>>('/visit/getAppDetails', data)
+  return post<API.Common.BaseResponse<API.APP.GetAppDetailsRes>>(
+    '/visit/getAppDetails',
+    data,
+  )
 }
 
 /**
@@ -32,7 +40,10 @@ export const getAppDetails = (data: API.APP.AppDetailsVO[]) => {
  * @returns 应用详情 Map<appId, AppDetailVO[]>
  */
 export const getAppDetail = (data: API.APP.AppDetailSearchBO[]) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppDetailRes>>('/app/getAppDetail', data)
+  return post<API.Common.BaseResponse<API.APP.GetAppDetailRes>>(
+    '/app/getAppDetail',
+    data,
+  )
 }
 
 /**
@@ -41,7 +52,10 @@ export const getAppDetail = (data: API.APP.AppDetailSearchBO[]) => {
  * @returns 轮播图应用列表
  */
 export const getWelcomeCarouselList = (data: API.APP.AppWelcomeSearchVO) => {
-  return post<API.Common.BaseResponse<API.APP.GetWelcomeCarouselListRes>>('/visit/getWelcomeCarouselList', data)
+  return post<API.Common.BaseResponse<API.APP.GetWelcomeCarouselListRes>>(
+    '/visit/getWelcomeCarouselList',
+    data,
+  )
 }
 
 /**
@@ -50,7 +64,10 @@ export const getWelcomeCarouselList = (data: API.APP.AppWelcomeSearchVO) => {
  * @returns 分页应用列表
  */
 export const getWelcomeAppList = (data: API.APP.AppMainVO) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>('/visit/getWelcomeAppList', data)
+  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>(
+    '/visit/getWelcomeAppList',
+    data,
+  )
 }
 
 /**
@@ -59,7 +76,10 @@ export const getWelcomeAppList = (data: API.APP.AppMainVO) => {
  * @returns 有更新的应用列表
  */
 export const appCheckUpdate = (data: API.APP.AppCheckVersionBO[]) => {
-  return post<API.Common.BaseResponse<API.APP.AppMainDetailDTO[]>>('/app/appCheckUpdate', data)
+  return post<API.Common.BaseResponse<API.APP.AppMainDetailDTO[]>>(
+    '/app/appCheckUpdate',
+    data,
+  )
 }
 
 /**
@@ -68,7 +88,10 @@ export const appCheckUpdate = (data: API.APP.AppCheckVersionBO[]) => {
  * @returns 分页应用列表
  */
 export const getNewAppList = (data: API.APP.AppMainVO) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>('/visit/getNewAppList', data)
+  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>(
+    '/visit/getNewAppList',
+    data,
+  )
 }
 
 /**
@@ -77,7 +100,10 @@ export const getNewAppList = (data: API.APP.AppMainVO) => {
  * @returns 分页应用列表
  */
 export const getInstallAppList = (data: API.APP.AppMainVO) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>('/visit/getInstallAppList', data)
+  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>(
+    '/visit/getInstallAppList',
+    data,
+  )
 }
 
 /**
@@ -86,7 +112,10 @@ export const getInstallAppList = (data: API.APP.AppMainVO) => {
  * @returns 应用版本列表
  */
 export const getSearchAppVersionList = (data: API.APP.AppMainVO) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppVersionListRes>>('/visit/getSearchAppVersionList', data)
+  return post<API.Common.BaseResponse<API.APP.GetAppVersionListRes>>(
+    '/visit/getSearchAppVersionList',
+    data,
+  )
 }
 
 /**
@@ -121,7 +150,9 @@ export const suggest = (data: API.APP.AppLoginSaveBO) => {
  * @returns Shell脚本字符串
  */
 export const findShellString = () => {
-  return get<API.Common.BaseResponse<API.APP.GetShellStringRes>>('/app/findShellString')
+  return get<API.Common.BaseResponse<API.APP.GetShellStringRes>>(
+    '/app/findShellString',
+  )
 }
 
 /**
@@ -153,4 +184,24 @@ export const saveVisitRecord = (data: API.APP.SaveVisitRecordVO) => {
  */
 export const saveInstalledRecord = (data: API.APP.SaveInstalledRecordVO) => {
   return post<API.Common.BaseResponse<null>>('/app/saveInstalledRecord', data)
+}
+
+
+export const getCustomMenuCategory = () => {
+  return get<API.Common.BaseResponse<API.APP.CustomMenuCategoryList>>(
+    '/app/sidebar/config',
+  )
+}
+
+
+/**
+ * 按分类获取推荐应用
+ *
+ * @param _data 查询参数
+ * @returns
+ */
+export const getRecommendAppList = (data: API.APP.SearchAppListParams) => {
+  return post<API.Common.BaseResponse<API.APP.GetWelcomeCarouselListRes>>(
+    '/web/getWebAppRecommendList', data,
+  )
 }

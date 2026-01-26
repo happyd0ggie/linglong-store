@@ -17,6 +17,7 @@ import { useUpdatesStore } from '@/stores/updates'
 import { useConfigStore } from '@/stores/appConfig'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { sendVisitRecord } from '@/services/analyticsService'
+import { getCustomMenuCategory } from '@/apis/apps'
 // import { arch } from '@tauri-apps/plugin-os'
 
 // 暂时注释的 Antd Layout 组件，可能用于未来的布局重构
@@ -28,9 +29,18 @@ import { sendVisitRecord } from '@/services/analyticsService'
  * 管理应用的初始化状态和主要布局结构
  */
 const AppLayout = () => {
-  const { isInited } = useGlobalStore()
+  const { isInited, setCustomMenuCategory } = useGlobalStore()
   const startAutoRefresh = useUpdatesStore(state => state.startAutoRefresh)
   const stopAutoRefresh = useUpdatesStore(state => state.stopAutoRefresh)
+  // 获取自定义菜单配置
+  useEffect(() => {
+    getCustomMenuCategory().then((res) => {
+      if (res.data?.menus && res.data?.menus.length > 0) {
+        setCustomMenuCategory(res.data?.menus)
+      }
+    })
+  }, [])
+
 
   // 初始化完成后发送访问记录
   useEffect(() => {

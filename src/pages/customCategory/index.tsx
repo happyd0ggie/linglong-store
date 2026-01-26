@@ -1,7 +1,7 @@
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useEffect, useState, useRef } from 'react'
-import { getSearchAppList } from '@/apis/apps/index'
+import { getSearchAppList, getRecommendAppList } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
 import { generateEmptyCards } from './utils'
 import { OperateType } from '@/constants/applicationCard'
@@ -16,7 +16,26 @@ const OfficeApps = () => {
   const [loading, setLoading] = useState<boolean>(false)
   const [totalPages, setTotalPages] = useState<number>(1)
   const [allAppList, setAllAppList] = useState<AppInfo[]>([])
+  const [recommendAppList, setRecommendAppList] = useState<AppInfo[]>([])
   const listRef = useRef<HTMLDivElement>(null)
+  // 办公分类包括效率办公和AI应用
+  const categoryList = ['d7c94cd3189a437292bc0573d9d86dc4', '5c24233b2c204ecfac9043c5d51c2ef8']
+  // 获取推荐应用
+  const getHeaderRecommendAppList = () => {
+    const params = {
+      repoName,
+      arch,
+      pageNo: 1,
+      pageSize: 5, // 只获取3个，可以写死
+      categoryId: categoryList.join(','),
+    }
+    // TODO: 获取推荐应用列表
+    getRecommendAppList(params).then(res => {
+
+      const newRecords = res.data || []
+      setRecommendAppList(newRecords)
+    })
+  }
 
   // 获取应用列表
   const getAllAppList = ({ categoryId = '', pageNo = 1, init = false }) => {
@@ -63,6 +82,7 @@ const OfficeApps = () => {
   // 初始化获取数据
   useEffect(() => {
     getAllAppList({ init: true })
+    getHeaderRecommendAppList() // 只发一次请求
   }, [])
 
   // 监听滚动
@@ -113,7 +133,7 @@ const OfficeApps = () => {
     </div>
     <div className={styles.recommendApplicationList}>
       {
-        allAppList.map((item, index) => {
+        recommendAppList.map((item, index) => {
           return index < 3 && (
             <ApplicationCard
               type="recommend"
