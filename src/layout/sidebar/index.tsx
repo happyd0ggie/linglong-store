@@ -1,5 +1,5 @@
 import styles from './index.module.scss'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import menuList from './components/menuList'
 import { Badge, Modal } from 'antd'
 import { useSearchStore, useGlobalStore } from '@/stores/global'
@@ -25,6 +25,8 @@ const Sidebar = ({ className }: { className: string }) => {
   const [hasDownloading, setHasDownloading] = useState(false)
   /** 当前安装任务 */
   const currentTask = useInstallQueueStore((state) => state.currentTask)
+  // 获取路由参数
+  const params = useParams()
   const handleMenuClick = (type: string, menuPath: string) => {
     setCustomMenuActive(null) // 重置自定义菜单激活状态
     if (type === 'page') {
@@ -32,11 +34,19 @@ const Sidebar = ({ className }: { className: string }) => {
       navigate(menuPath)
     } else if (type === 'custom') {
       setCustomMenuActive(menuPath)
-      navigate(menuPath)
+      navigate(`/custom_category/${menuPath}`)// 自定义分类菜单跳到这个页面
     } else {
       setIsShowDownloadProcess(true)
     }
   }
+  // 监听路由变化，恢复自定义菜单激活状态
+  useEffect(() => {
+    // 检查是否是自定义分类路由
+    if (location.pathname.startsWith('/custom_category/')) {
+      const code = params.code // 路由是 /custom_category/:code
+      setCustomMenuActive(code || null)
+    }
+  }, [location.pathname, params]) // 监听路由和参数变化
   /**
    * 监听当前安装任务变化，更新是否有下载中的应用标志
    */
@@ -77,7 +87,7 @@ const Sidebar = ({ className }: { className: string }) => {
         }
         {
           customMenus.map((item, index) => {
-            const isActive = location.pathname === '/custom_category' && customMenuActive === item.code
+            const isActive = location.pathname === `/custom_category/${item.code}` && customMenuActive === item.code
             return item.enabled && (
               <div
                 className={`${styles.menuItem} ${isActive ? styles.active : ''}`}

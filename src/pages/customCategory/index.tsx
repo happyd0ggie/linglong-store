@@ -1,16 +1,16 @@
 import styles from './index.module.scss'
 import ApplicationCard from '@/components/ApplicationCard'
 import { useEffect, useState, useRef } from 'react'
-import { getSearchAppList, getRecommendAppList } from '@/apis/apps/index'
+import { getAppListByCategoryIds, getRecommendAppList } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
 import { generateEmptyCards } from './utils'
 import { OperateType } from '@/constants/applicationCard'
 import { Select, Checkbox } from 'antd'
+import { useParams } from 'react-router-dom'
 const defaultPageSize = 30 // 每页显示数量
 type AppInfo = API.APP.AppMainDto
 const OfficeApps = () => {
-  const arch = useGlobalStore((state) => state.arch)
-  const repoName = useGlobalStore((state) => state.repoName)
+  const { arch, repoName, customMenuCategory } = useGlobalStore()
   const [activeCategory] = useState<string>('')
   const [pageNo, setPageNo] = useState<number>(1)
   const [loading, setLoading] = useState<boolean>(false)
@@ -18,8 +18,8 @@ const OfficeApps = () => {
   const [allAppList, setAllAppList] = useState<AppInfo[]>([])
   const [recommendAppList, setRecommendAppList] = useState<AppInfo[]>([])
   const listRef = useRef<HTMLDivElement>(null)
-  // 办公分类包括效率办公和AI应用
-  const categoryList = ['d7c94cd3189a437292bc0573d9d86dc4', '5c24233b2c204ecfac9043c5d51c2ef8']
+  const { code } = useParams()
+  const { categoryIds, name } = customMenuCategory.filter(item => item.code === code)[0]
   // 获取推荐应用
   const getHeaderRecommendAppList = () => {
     const params = {
@@ -27,7 +27,7 @@ const OfficeApps = () => {
       arch,
       pageNo: 1,
       pageSize: 5, // 只获取3个，可以写死
-      categoryId: categoryList.join(','),
+      categoryId: categoryIds.join(','),
     }
     // TODO: 获取推荐应用列表
     getRecommendAppList(params).then(res => {
@@ -38,7 +38,7 @@ const OfficeApps = () => {
   }
 
   // 获取应用列表
-  const getAllAppList = ({ categoryId = '', pageNo = 1, init = false }) => {
+  const getAllAppList = ({ pageNo = 1, init = false }) => {
     setLoading(true)
 
     if (init) {
@@ -46,8 +46,8 @@ const OfficeApps = () => {
       setAllAppList(generateEmptyCards(defaultPageSize))
     }
     try {
-      getSearchAppList({
-        categoryId,
+      getAppListByCategoryIds({
+        menuCode: code,
         repoName,
         arch,
         pageNo,
@@ -83,7 +83,7 @@ const OfficeApps = () => {
   useEffect(() => {
     getAllAppList({ init: true })
     getHeaderRecommendAppList() // 只发一次请求
-  }, [])
+  }, [code])
 
   // 监听滚动
   useEffect(() => {
@@ -118,7 +118,7 @@ const OfficeApps = () => {
 
   return <div className={styles.officeAppsPage} ref={listRef} >
     <div className={styles.search} >
-      <h3>办公</h3>
+      <h3>{name}</h3>
       <div className={styles.searchBox}>
         <Select
           defaultValue="update"

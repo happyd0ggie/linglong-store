@@ -32,7 +32,7 @@ const router = createBrowserRouter([
         element: <AllApps />,
       },
       {
-        path: '/custom_category',
+        path: '/custom_category/:code',
         element: <CustomCategory />,
       },
       {

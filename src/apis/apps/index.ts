@@ -205,3 +205,15 @@ export const getRecommendAppList = (data: API.APP.SearchAppListParams) => {
     '/web/getWebAppRecommendList', data,
   )
 }
+
+/**
+ * 根据查询条件名称或者分类获取玲珑列表(分页)
+ * @param data 查询条件
+ * @returns 分页应用列表
+ */
+export const getAppListByCategoryIds = (data: API.APP.SearchAppListParams) => {
+  return post<API.Common.BaseResponse<API.APP.GetAppListRes>>(
+    '/app/sidebar/apps',
+    data,
+  )
+}
