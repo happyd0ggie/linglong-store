@@ -177,7 +177,6 @@ const ApplicationCard = ({
   return (
     <div
       className={`${styles.applicationCard} ${cardLoading ? styles.cardLoading : ''}`}
-      style={{ background: type === 'recommend' ? 'linear-gradient(to top, #dfe9f3 0%, white 100%)' : '' }}
       onClick={handleNavigateToDetail}
     >
       <div className={styles.icon}>

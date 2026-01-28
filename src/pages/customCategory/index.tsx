@@ -149,7 +149,7 @@ const OfficeApps = () => {
           onChange={handleFilterChange}>过滤低分应用</Checkbox>
       </div>
     </div>
-    <div className={styles.recommendApplicationList}>
+    <div className={styles.recommendApplicationList} style={{ marginTop: recommendAppList.length > 0 ? '3rem' : 0 }}>
       {
         recommendAppList.map((item, index) => {
           return index < 3 && (
@@ -162,8 +162,6 @@ const OfficeApps = () => {
           )
         })
       }
-      {loading && <div className={styles.loadingTip}>加载中...</div>}
-      {totalPages <= pageNo && allAppList.length > 0 && <div className={styles.noMoreTip}>没有更多数据了</div>}
     </div>
     <div className={styles.applicationList}>
       {
