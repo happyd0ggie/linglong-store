@@ -177,7 +177,7 @@ const ApplicationCard = ({
   return (
     <div
       className={`${styles.applicationCard} ${cardLoading ? styles.cardLoading : ''}`}
-      style={{ backgroundColor: type === 'recommend' ? 'var(--ant-color-bg-container)' : '' }}
+      style={{ background: type === 'recommend' ? 'linear-gradient(to top, #dfe9f3 0%, white 100%)' : '' }}
       onClick={handleNavigateToDetail}
     >
       <div className={styles.icon}>
@@ -200,6 +200,8 @@ const ApplicationCard = ({
             type === 'recommend' && (<div className={styles.version}>
               <Text type="secondary" style={{ fontSize: '12px' }}>
             版本: {appInfo.version || '-'}
+              </Text><Text type="secondary" style={{ fontSize: '12px', color: '#cda354' }}>
+            TOP
               </Text>
             </div>
             )
@@ -212,7 +214,7 @@ const ApplicationCard = ({
             shape='round'
             style={
               resolvedOperateId === OperateType.OPEN
-                ? { backgroundColor: '#1AD56C', borderColor: '#1AD56C' } // 绿色
+                ? { backgroundColor: '#fff', borderColor: '#d8d8d8', color: '#2c2c2c' } // 白底黑字
                 : {}
             }
             className={styles.installButton}
