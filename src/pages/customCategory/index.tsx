@@ -5,7 +5,7 @@ import { getAppListByCategoryIds, getRecommendAppList } from '@/apis/apps/index'
 import { useGlobalStore } from '@/stores/global'
 import { generateEmptyCards } from './utils'
 import { OperateType } from '@/constants/applicationCard'
-import { Select, Checkbox } from 'antd'
+import { Select, Checkbox, type CheckboxProps } from 'antd'
 import { useParams } from 'react-router-dom'
 const defaultPageSize = 30 // 每页显示数量
 type AppInfo = API.APP.AppMainDto
@@ -20,6 +20,16 @@ const OfficeApps = () => {
   const listRef = useRef<HTMLDivElement>(null)
   const { code } = useParams()
   const { categoryIds, name } = customMenuCategory.filter(item => item.code === code)[0]
+  const [filter, setFilter] = useState<boolean>(false) // 是否过滤低分应用
+  const [sortType, setSortType] = useState<string>('createTime') // 排序类型
+  // 处理过滤低分应用的change事件
+  const handleFilterChange:CheckboxProps['onChange'] = (e) => {
+    setFilter(e.target.checked)
+  }
+  // 处理排序类型的change事件
+  const handleSortTypeChange = (value: string) => {
+    setSortType(value)
+  }
   // 获取推荐应用
   const getHeaderRecommendAppList = () => {
     const params = {
@@ -50,6 +60,8 @@ const OfficeApps = () => {
         menuCode: code,
         repoName,
         arch,
+        filter,
+        sortType,
         pageNo,
         pageSize: defaultPageSize,
       }).then(res => {
@@ -84,7 +96,10 @@ const OfficeApps = () => {
     getAllAppList({ init: true })
     getHeaderRecommendAppList() // 只发一次请求
   }, [code])
-
+  // 监听filter和sortType参数变化
+  useEffect(() => {
+    getAllAppList({ init: true })
+  }, [filter, sortType])
   // 监听滚动
   useEffect(() => {
     const handleScroll = () => {
@@ -121,14 +136,17 @@ const OfficeApps = () => {
       <h3>{name}</h3>
       <div className={styles.searchBox}>
         <Select
-          defaultValue="update"
+          defaultValue={sortType}
           style={{ minWidth: '5rem', maxWidth: '20rem', flex: 1 }}
+          onChange={handleSortTypeChange}
           options={[
-            { value: 'update', label: '按更新排序' },
-            { value: 'download', label: '按下载排序' },
+            { value: 'createTime', label: '按上架时间排序' },
+            { value: 'installCount', label: '按安装量排序' },
+            { value: 'last30Downloads', label: '按近30天下载量排序' },
           ]}
         />
-        <Checkbox>过滤低分应用</Checkbox>
+        <Checkbox checked={filter}
+          onChange={handleFilterChange}>过滤低分应用</Checkbox>
       </div>
     </div>
     <div className={styles.recommendApplicationList}>
