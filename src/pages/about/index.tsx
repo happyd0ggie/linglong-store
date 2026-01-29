@@ -37,7 +37,7 @@ const AboutSoft = () => {
   const linglongData = useMemo(() => [
     {
       label: '玲珑官网',
-      value: 'https://linglong.space/',
+      value: 'https://linyaps.org.cn/',
     },
     {
       label: '玲珑网页版商店',
@@ -222,8 +222,8 @@ const AboutSoft = () => {
           <Form.Item colon label="描述" name='description'>
             <TextArea rows={6} />
           </Form.Item>
-          <Form.Item colon label="上传log" name="uploadLog" valuePropName="checked">
-            <Checkbox>上传</Checkbox>
+          <Form.Item colon label="" name="uploadLog" valuePropName="checked">
+            <Checkbox>上传日志</Checkbox>
           </Form.Item>
           <Form.Item>
             <div style={{ textAlign: 'right' }}>
