@@ -44,6 +44,8 @@ declare namespace Store {
     repoName: string
     detailMsg: string
     repos: API.INVOKE.LinglongRepo[]
+    /** 是否在容器内运行 */
+    isContainer: boolean
     setChecking: (value: boolean) => void
     setInstalling: (value: boolean) => void
     setReason: (value?: string) => void

@@ -2,7 +2,7 @@
 //!
 //! NOTE:
 //! These helpers are not fixes and may stop working as environments change.
-
+//! 文件来自：https://github.com/clash-verge-rev/clash-verge-rev/blob/712b8ff19bfbe9767201d4801de17eb99ba92f10/src-tauri/src/utils/linux/workarounds.rs
 use std::{fs, path::Path};
 
 pub fn apply_nvidia_dmabuf_renderer_workaround() {

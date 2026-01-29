@@ -100,6 +100,7 @@ declare namespace API {
       llBinVersion?: string;
       repoName?: string;
       repos?: LinglongRepo[];
+      isContainer?: boolean;
     }
 
     interface InstallLinglongResult {
