@@ -21,7 +21,7 @@ const LaunchPage = ()=>{
       <div className={
         styles.logo
       }> <img src={Logo} alt="logo" />   </div>
-      <div className={styles.name}>如意玲珑应用商店</div>
+      <div className={styles.name}>玲珑应用商店社区版</div>
       <div className={styles.step}>{currentStep}</div>
       <div className={styles.progress}>
         <Progress percent={progress} showInfo={false} />

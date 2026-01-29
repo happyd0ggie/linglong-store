@@ -241,7 +241,7 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
       {/* 左侧：Logo和标题 */}
       <div className={styles.titlebarLeft}>
         <img src="/logo.svg" alt="logo" className={styles.logo} draggable={false} />
-        <span className={styles.title}>如意玲珑应用商店</span>
+        <span className={styles.title}>玲珑应用商店社区版</span>
       </div>
       {/* 中间：搜索框（仅在初始化完成后显示） */}
       {

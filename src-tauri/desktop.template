@@ -1,12 +1,12 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=玲珑应用商店
-Name[zh_CN]=玲珑应用商店
+Name=玲珑应用商店社区版
+Name[zh_CN]=玲珑应用商店社区版
 GenericName=Application Store
 GenericName[zh_CN]=应用商店
 Comment=Linglong Application Store
-Comment[zh_CN]=玲珑应用商店 - 管理和安装玲珑应用
+Comment[zh_CN]=玲珑应用商店社区版 - 管理和安装玲珑应用
 Exec={{exec}}
 Icon={{icon}}
 StartupWMClass={{name}}
