@@ -1,4 +1,4 @@
-import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message, Upload, type UploadProps } from 'antd'
+import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message } from 'antd'
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
 import upgradeApp from '@/assets/icons/upgradeApp.svg'
@@ -222,15 +222,14 @@ const AboutSoft = () => {
           <Form.Item colon label="描述" name='description'>
             <TextArea rows={6} />
           </Form.Item>
-            <Form.Item colon label="" name="uploadLog" valuePropName="checked">
-                <Checkbox>上传日志</Checkbox>
-          <Form.Item>
-            <div style={{ textAlign: 'right' }}>
-              <Button type="primary" htmlType="submit">
-                提交
-              </Button>
-            </div>
+          <Form.Item colon label="日志" name="uploadLog" valuePropName="checked">
+            <Checkbox>上传日志</Checkbox>
           </Form.Item>
+          <div style={{ textAlign: 'right' }}>
+            <Button type="primary" htmlType="submit">
+                提交
+            </Button>
+          </div>
         </Form>
       </Drawer>
     </div>
