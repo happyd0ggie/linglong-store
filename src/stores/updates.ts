@@ -1,41 +1,116 @@
 import { create } from 'zustand'
-import { getInstalledLinglongApps, searchRemoteApp } from '@/apis/invoke'
-import { getAppDetails } from '@/apis/apps'
-import { compareVersions } from '@/util/checkVersion'
+import { getInstalledLinglongApps } from '@/apis/invoke'
+import { appCheckUpdate } from '@/apis/apps'
 import { useGlobalStore } from './global'
 
-export interface UpdateInfo {
-  appId: string
-  name: string
-  version: string // New version
+// ==================== 类型定义 ====================
+
+/**
+ * 应用更新信息
+ */
+export interface UpdateInfo extends API.APP.AppMainDto {
+  /** 当前已安装版本 */
   currentVersion: string
-  description: string
-  icon: string
-  arch: string
-  categoryName?: string
-  zhName?: string
 }
 
+/**
+ * 更新检查 Store 状态接口
+ */
 interface UpdatesStore {
+  /** 可更新的应用列表 */
   updates: UpdateInfo[]
+  /** 是否正在检查更新 */
   checking: boolean
+  /** 上次检查时间戳 */
   lastChecked: number
+  /** 检查更新 */
   checkUpdates: (force?: boolean) => Promise<void>
+  /** 启动自动刷新 */
   startAutoRefresh: () => void
+  /** 停止自动刷新 */
   stopAutoRefresh: () => void
-  removeUpdate: (appId: string) => void
 }
 
-let timer: NodeJS.Timeout | null = null
+// ==================== 常量配置 ====================
+
+/** 自动刷新间隔（1小时） */
+const AUTO_REFRESH_INTERVAL = 60 * 60 * 1000
+
+/** 定时器引用 */
+let autoRefreshTimer: NodeJS.Timeout | null = null
+
+// ==================== 辅助函数 ====================
+
+/**
+ * 构建检查更新参数
+ * @param installedApps 已安装的应用列表
+ * @param arch 系统架构
+ * @returns 查询参数数组
+ */
+function buildCheckUpdateParams(
+  installedApps: API.INVOKE.InstalledApp[],
+  arch: string,
+): API.APP.AppCheckVersionBO[] {
+  return installedApps
+    .filter(app => app.module !== 'devel')
+    .map(app => ({
+      appId: app.appId,
+      arch,
+      version: app.version,
+    }))
+}
+
+/**
+ * 将远程更新数据映射到 Store 格式
+ * @param installedApps 已安装的应用列表
+ * @param remoteUpdates 远程返回的有更新的应用列表
+ * @returns 更新信息列表
+ */
+function mapRemoteUpdatesToStore(
+  installedApps: API.INVOKE.InstalledApp[],
+  remoteUpdates: API.APP.AppMainDetailDTO[],
+): UpdateInfo[] {
+  const updateList: UpdateInfo[] = []
+  const installedMap = new Map(installedApps.map(app => [app.appId, app]))
+
+  for (const remoteApp of remoteUpdates) {
+    const installedApp = installedMap.get(remoteApp.appId || '')
+    if (!installedApp) {
+      continue
+    }
+
+    updateList.push({
+      appId: remoteApp.appId || installedApp.appId,
+      name: remoteApp.name || installedApp.name,
+      version: remoteApp.version || '',
+      currentVersion: installedApp.version,
+      description: remoteApp.description || installedApp.description || '',
+      icon: remoteApp.icon || installedApp.icon,
+      arch: remoteApp.arch || installedApp.arch,
+      categoryName: remoteApp.categoryName || installedApp.categoryName,
+      zhName: remoteApp.zhName || installedApp.zhName || remoteApp.name || installedApp.name,
+    })
+  }
+
+  return updateList
+}
+
+// ==================== Store 定义 ====================
 
 export const useUpdatesStore = create<UpdatesStore>((set, get) => ({
   updates: [],
   checking: false,
   lastChecked: 0,
 
+  /**
+   * 检查应用更新
+   * 通过批量查询接口获取远程版本信息，与本地版本对比生成更新列表
+   * @param force 是否强制检查（忽略正在进行的检查）
+   */
   checkUpdates: async(force = false) => {
     const { checking } = get()
 
+    // 防止重复检查
     if (checking && !force) {
       return
     }
@@ -43,131 +118,78 @@ export const useUpdatesStore = create<UpdatesStore>((set, get) => ({
     set({ checking: true })
 
     try {
+      // 1. 获取已安装的应用列表
       const installedApps = await getInstalledLinglongApps()
-
-      // 并行检查更新
-      const checkPromises = installedApps.map(async(app) => {
-        if (app.module === 'devel') {
-          return null
-        }
-
-        try {
-          const searchResults = await searchRemoteApp(app.appId)
-
-          // 过滤出相同 appId 且非 devel 的版本
-          const validResults = searchResults.filter((item) => {
-            const itemId = item.appId || item.name
-            return itemId === app.appId && item.module !== 'devel'
-          })
-
-          if (validResults.length > 0) {
-            // 按版本号降序排序
-            validResults.sort((a, b) => compareVersions(b.version, a.version))
-
-            const latest = validResults[0]
-            // 如果最新版本大于当前版本
-            if (compareVersions(latest.version, app.version) === 1) {
-              let arch = ''
-              if (typeof latest.arch === 'string') {
-                arch = latest.arch
-              } else if (Array.isArray(latest.arch) && latest.arch.length > 0) {
-                arch = latest.arch[0]
-              }
-
-              return {
-                appId: app.appId,
-                name: latest.name,
-                version: latest.version,
-                currentVersion: app.version,
-                description: latest.description || '',
-                icon: app.icon, // 使用本地图标或后续获取
-                arch,
-                categoryName: app.categoryName,
-              } as UpdateInfo
-            }
-          }
-        } catch (err) {
-          console.error(`Failed to check update for ${app.appId}:`, err)
-        }
-        return null
-      })
-
-      const results = await Promise.all(checkPromises)
-      const updateList = results.filter((item): item is UpdateInfo => item !== null)
-
-      // Fetch rich details (icons, zhName) from backend
-      if (updateList.length > 0) {
-        try {
-          const appDetailsVOs = updateList.map((info) => {
-            const originalApp = installedApps.find(a => a.appId === info.appId)
-            return {
-              appId: info.appId,
-              name: info.name,
-              version: info.version,
-              channel: originalApp?.channel || '',
-              module: originalApp?.module || '',
-              arch: info.arch,
-            }
-          })
-
-          const res = await getAppDetails(appDetailsVOs)
-          if (res.data && Array.isArray(res.data)) {
-            res.data.forEach((detail) => {
-              const target = updateList.find(u => u.appId === detail.appId)
-              if (target) {
-                if (detail.icon) {
-                  target.icon = detail.icon
-                }
-                if (detail.description) {
-                  target.description = detail.description
-                }
-                if (detail.zhName) {
-                  target.zhName = detail.zhName
-                }
-              }
-            })
-          }
-        } catch (e) {
-          console.error('Failed to fetch app details for updates:', e)
-        }
+      if (installedApps.length === 0) {
+        set({ updates: [], lastChecked: Date.now() })
+        useGlobalStore.getState().getUpdateAppNum(0)
+        return
       }
 
-      set({ updates: updateList, lastChecked: Date.now() })
+      // 2. 获取系统架构
+      const arch = useGlobalStore.getState().arch
+      if (!arch) {
+        console.warn('[checkUpdates] System arch not available')
+        return
+      }
 
-      // 更新全局状态中的更新数量
+      // 3. 构建批量查询参数
+      const searchParams = buildCheckUpdateParams(installedApps, arch)
+      if (searchParams.length === 0) {
+        set({ updates: [], lastChecked: Date.now() })
+        useGlobalStore.getState().getUpdateAppNum(0)
+        return
+      }
+
+      // 4. 批量查询远程版本信息
+      const response = await appCheckUpdate(searchParams)
+      if (!response.data) {
+        console.warn('[checkUpdates] No data returned from appCheckUpdate')
+        set({ updates: [], lastChecked: Date.now() })
+        useGlobalStore.getState().getUpdateAppNum(0)
+        return
+      }
+
+      // 5. 处理远程数据，生成更新列表
+      const updateList = mapRemoteUpdatesToStore(installedApps, response.data)
+
+      // 6. 更新状态
+      set({ updates: updateList, lastChecked: Date.now() })
       useGlobalStore.getState().getUpdateAppNum(updateList.length)
 
     } catch (error) {
-      console.error('Failed to check updates:', error)
+      console.error('[checkUpdates] Failed to check updates:', error)
     } finally {
       set({ checking: false })
     }
   },
 
+  /**
+   * 启动自动刷新
+   * 立即执行一次检查，然后每小时自动检查一次
+   */
   startAutoRefresh: () => {
-    if (timer) {
+    if (autoRefreshTimer) {
       return
     }
-    // 立即检查
+
+    // 立即检查一次
     get().checkUpdates()
-    // 每小时检查一次
-    timer = setInterval(() => {
+
+    // 设置定时刷新
+    autoRefreshTimer = setInterval(() => {
       get().checkUpdates()
-    }, 60 * 60 * 1000)
+    }, AUTO_REFRESH_INTERVAL)
   },
 
+  /**
+   * 停止自动刷新
+   */
   stopAutoRefresh: () => {
-    if (timer) {
-      clearInterval(timer)
-      timer = null
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer)
+      autoRefreshTimer = null
     }
   },
 
-  removeUpdate: (appId: string) => {
-    set(state => {
-      const next = state.updates.filter(item => item.appId !== appId)
-      useGlobalStore.getState().getUpdateAppNum(next.length)
-      return { updates: next }
-    })
-  },
 }))

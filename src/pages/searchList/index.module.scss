@@ -14,6 +14,8 @@
         grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
         gap: 16px;
 
+
+
         .loadingTip,
         .noMoreTip {
             grid-column: 1 / -1;
@@ -28,5 +30,13 @@
         .loadingTip {
             color: var(--color-text-2);
         }
+    }
+
+    .SearchListEmpty {
+        height: 50%;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 }

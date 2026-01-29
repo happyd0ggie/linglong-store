@@ -1,7 +1,9 @@
-import { Switch } from 'antd'
+import { Switch, message } from 'antd'
 import styles from './index.module.scss'
 import { useConfigStore } from '@/stores/appConfig'
 import { useState } from 'react'
+import { pruneApps } from '@/apis/invoke'
+
 const BasicSetting = ()=>{
   const checkVersion = useConfigStore((state) => state.checkVersion)
   const closeOrHide = useConfigStore((state) => state.closeOrHide)
@@ -10,20 +12,35 @@ const BasicSetting = ()=>{
   const changeBaseServiceStatus = useConfigStore((state) => state.changeBaseServiceStatus)
   const changeCloseOrHide = useConfigStore((state) => state.changeCloseOrHide)
   const [isHide, setIsHide] = useState(closeOrHide === 'hide')
+  const [isPruning, setIsPruning] = useState(false)
+
   const autoCheckClick = ()=>{
     changeCheckVersionStatus(!checkVersion)
   }
   const showBaseServiceClick = ()=>{
     changeBaseServiceStatus(!showBaseService)
   }
-  // const clearAbandonServiceClick = () => {
-  //   console.info('清除废弃基础服务')
-  // }
+  const clearAbandonServiceClick = async() => {
+    if (isPruning) {
+      return
+    }
+
+    setIsPruning(true)
+    try {
+      const result = await pruneApps()
+      message.success(result || '清理完成')
+    } catch (error) {
+      message.error(`清理失败: ${error}`)
+    } finally {
+      setIsPruning(false)
+    }
+  }
   const handleCloseOrHide = (e:boolean)=>{
     setIsHide(e)
     const newValue = e ? 'hide' : 'close'
     changeCloseOrHide(newValue)
   }
+
   return (
     <div className={styles.setting} style={{ padding: 20 }}>
       <div className={styles.basic_setting}>
@@ -43,7 +60,12 @@ const BasicSetting = ()=>{
           <div className={styles.content_item}>
             <Switch checked={showBaseService} onChange={showBaseServiceClick}/><span className={styles.item_label}>显示基础运行服务</span>
           </div>
-          {/* <p className={styles.clean_basic} onClick={clearAbandonServiceClick}>清除废弃基础服务</p> */}
+          <p
+            className={`${styles.clean_basic} ${isPruning ? styles.disabled : ''}`}
+            onClick={clearAbandonServiceClick}
+          >
+            {isPruning ? '正在清理...' : '清除废弃基础服务'}
+          </p>
         </div>
       </div>
     </div>

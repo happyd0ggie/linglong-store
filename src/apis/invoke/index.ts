@@ -82,18 +82,41 @@ export const installApp = async(
 }
 
 /**
- * 取消正在进行的应用安装
+ * 取消正在进行的安装
  * @param appId - 要取消安装的应用ID
  * @returns Promise<string> 取消操作的结果
  */
-export const cancelInstallApp = async(appId: string): Promise<string> => {
-  try {
-    const result = await invoke('cancel_install', { appId })
-    return result as string
-  } catch (error) {
-    console.error('[cancelInstallApp] API error:', error)
-    throw error
-  }
+export const cancelInstall = async(
+  appId: string,
+): Promise<string> => {
+  return await invoke('cancel_install', { appId })
+}
+
+/**
+ * 退出应用
+ * @returns Promise<void>
+ */
+export const quitApp = async(): Promise<void> => {
+  return await invoke('quit_app')
+}
+
+/**
+ * 监听托盘退出事件
+ * @param callback - 退出请求回调函数
+ * @returns Promise<UnlistenFn> 取消监听的函数
+ *
+ * @example
+ * ```ts
+ * const unlisten = await onTrayQuit(() => {
+ *   console.log('User clicked quit from tray')
+ *   // 执行确认逻辑
+ * })
+ * ```
+ */
+export const onTrayQuit = async(
+  callback: () => void,
+): Promise<UnlistenFn> => {
+  return await listen('tray-quit', callback)
 }
 
 /**
@@ -106,6 +129,10 @@ export const cancelInstallApp = async(appId: string): Promise<string> => {
  * // 开始监听
  * const unlisten = await onInstallProgress((progress) => {
  *   console.log(`${progress.appId}: ${progress.percentage}% - ${progress.status}`)
+ *   // 新增: 处理事件类型
+ *   if (progress.eventType === 'error') {
+ *     console.error(`Error code: ${progress.code}, detail: ${progress.errorDetail}`)
+ *   }
  * })
  *
  * // 取消监听
@@ -117,33 +144,6 @@ export const onInstallProgress = async(
 ): Promise<UnlistenFn> => {
   return await listen<API.INVOKE.InstallProgress>(
     'install-progress',
-    (event) => {
-      callback(event.payload)
-    },
-  )
-}
-
-/**
- * 监听安装取消事件
- * @param callback - 取消回调函数
- * @returns Promise<UnlistenFn> 取消监听的函数
- *
- * @example
- * ```typescript
- * // 开始监听
- * const unlisten = await onInstallCancelled((event) => {
- *   console.log(`Installation cancelled for: ${event.appId}`)
- * })
- *
- * // 取消监听
- * unlisten()
- * ```
- */
-export const onInstallCancelled = async(
-  callback: (event: { appId: string; cancelled: boolean; message: string }) => void,
-): Promise<UnlistenFn> => {
-  return await listen<{ appId: string; cancelled: boolean; message: string }>(
-    'install-cancelled',
     (event) => {
       callback(event.payload)
     },
@@ -167,4 +167,30 @@ export const searchRemoteApp = async(
  */
 export const getLlCliVersion = async(): Promise<string> => {
   return await invoke('get_ll_cli_version_cmd')
+}
+
+/**
+ * 检查玲珑环境状态
+ */
+export const checkLinglongEnv = async(): Promise<API.INVOKE.LinglongEnvCheckResult> => {
+  return await invoke('check_linglong_env_cmd')
+}
+
+/**
+ * 执行玲珑环境自动安装
+ * @param script 安装脚本字符串
+ */
+export const installLinglongEnv = async(
+  script: string,
+): Promise<API.INVOKE.InstallLinglongResult> => {
+  return await invoke('install_linglong_env_cmd', { script })
+}
+
+/**
+ * 清理废弃的基础服务
+ * 调用 ll-cli prune 命令清理不再使用的运行时和基础服务
+ * @returns Promise<string> 清理操作的结果消息
+ */
+export const pruneApps = async(): Promise<string> => {
+  return await invoke('prune_apps')
 }

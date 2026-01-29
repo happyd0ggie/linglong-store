@@ -4,6 +4,17 @@
  */
 import { create } from 'zustand'
 
+const shallowEqual = (a: Partial<Store.EnvState>, b: Partial<Store.EnvState>) => {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const key of keys) {
+    // @ts-expect-error dynamic compare
+    if (a[key] !== b[key]) {
+      return false
+    }
+  }
+  return true
+}
+
 export const useGlobalStore = create<Store.Global>((set) => ({
   isInited: false,
   arch: '',
@@ -11,6 +22,22 @@ export const useGlobalStore = create<Store.Global>((set) => ({
   // use package.json version as global appVersion
   appVersion: '',
   updateAppNum: 0,
+  checking: false,
+  installing: false,
+  checked: false,
+  envReady: false,
+  reason: undefined,
+  osVersion: '',
+  glibcVersion: '',
+  kernelInfo: '',
+  llVersion: '',
+  llBinVersion: '',
+  detailMsg: '',
+  repos: [],
+  isContainer: false,
+  // 匿名统计相关
+  visitorId: '',
+  clientIp: '',
   onInited: () => set(() => ({ isInited: true })),
   setArch: (value: string) => set(() => ({
     arch: value,
@@ -22,6 +49,24 @@ export const useGlobalStore = create<Store.Global>((set) => ({
     updateAppNum: num,
   })),
   setAppVersion: (value: string) => set(() => ({ appVersion: value })),
+  setChecking: (value: boolean) => set(() => ({ checking: value })),
+  setInstalling: (value: boolean) => set(() => ({ installing: value })),
+  setReason: (value?: string) => set(() => ({ reason: value })),
+  setEnvReady: (value: boolean) => set(() => ({ envReady: value })),
+  setEnvInfo: (value: Partial<Store.EnvState>) => set((state) => {
+    const next = {
+      ...state,
+      ...value,
+      checked: true,
+    }
+    if (shallowEqual(state, next)) {
+      return state
+    }
+    console.info('[env] setEnvInfo', value)
+    return next
+  }),
+  setVisitorId: (value: string) => set(() => ({ visitorId: value })),
+  setClientIp: (value: string) => set(() => ({ clientIp: value })),
 }))
 
 // /**

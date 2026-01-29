@@ -4,6 +4,7 @@ import { useGlobalStore, useSearchStore } from '@/stores/global'
 import { getSearchAppList } from '@/apis/apps/index'
 import { useState, useEffect, useRef } from 'react'
 import { generateEmptyCards } from './utils'
+import { Empty } from 'antd'
 const defaultPageSize = 10 // 每页显示数量
 
 type AppInfo = API.APP.AppMainDto
@@ -97,9 +98,9 @@ const SearchList = ()=>{
 
   return <div className={styles.searchPage} ref={listRef}>
     <p className={styles.SearchResult}>搜索结果：</p>
-    <div className={styles.SearchList}>
+    <div className={searchAppList.length > 0 ? styles.SearchList : styles.SearchListEmpty}>
       {
-        searchAppList.map((item, index) => {
+        searchAppList.length > 0 ? searchAppList.map((item, index) => {
           return (
             <ApplicationCard
               key={`${item.appId}_${index}`}
@@ -107,7 +108,7 @@ const SearchList = ()=>{
               operateId={1}
             />
           )
-        })
+        }) : <Empty description="没有搜索到数据哦！"/>
       }
       {loading && <div className={styles.loadingTip}>加载中...</div>}
       {!loading && totalPages <= pageNo && searchAppList.length > 0 && <div className={styles.noMoreTip}>没有更多数据了</div>}

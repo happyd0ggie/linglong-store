@@ -1,86 +1,90 @@
+/**
+ * 下载进度组件
+ * 显示安装队列中的任务状态和进度
+ */
 import styles from './index.module.scss'
 import { useMemo } from 'react'
 import DefaultIcon from '@/assets/linyaps.svg?url'
 import { Progress, Empty, message } from 'antd'
-import { useDownloadConfigStore } from '@/stores/appConfig'
-import { cancelInstallApp, runApp } from '@/apis/invoke'
+import { useInstallQueueStore } from '@/stores/installQueue'
+import { runApp, cancelInstall } from '@/apis/invoke'
 
-const DownloadIcon = ({ appId, percentage = 0, isDownloading = false }: {
-  appId: string
+/**
+ * 任务进度图标组件
+ */
+const TaskProgressIcon = ({
+  percentage = 0,
+  status,
+}: {
   percentage?: number
-  isDownloading?: boolean
+  status: Store.InstallTaskStatus
 }) => {
-  const {
-    removeDownloadingApp,
-  } = useDownloadConfigStore()
-
-  const handleCancel = async() => {
-    if (isDownloading) {
-      try {
-        const result = await cancelInstallApp(appId)
-        console.info('[handleCancel] Cancel result:', result)
-        message.success('已取消安装')
-        removeDownloadingApp(appId)
-        console.info('[handleCancel] Successfully cancelled:', appId)
-      } catch (error) {
-        console.error('[handleCancel] Cancel failed:', error)
-
-        // 检查是否是"找不到进程"的错误
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        if (errorMessage.includes('No installation process found')) {
-          removeDownloadingApp(appId)
-        } else {
-          message.error(`取消安装失败: ${errorMessage}`)
-        }
-      }
-    } else {
-      // 已完成的任务直接删除
-      removeDownloadingApp(appId)
-      console.info('[handleCancel] Removed completed task:', appId)
+  // 根据状态确定进度条状态
+  const progressStatus = useMemo(() => {
+    switch (status) {
+    case 'success':
+      return 'success'
+    case 'failed':
+      return 'exception'
+    case 'installing':
+      return 'active'
+    default:
+      return 'normal'
     }
-  }
+  }, [status])
 
   return (
     <div className={styles.downloadIcon}>
-      <span className={styles.cancelDownload} onClick={handleCancel}>
-        ×
-      </span>
       <Progress
         percent={Number(percentage)}
-        width={32}
-        type='circle'
-        status={percentage >= 100 ? 'success' : 'active'}
+        size={32}
+        type="circle"
+        status={progressStatus}
         strokeWidth={6}
         format={(percent) => `${Math.round(percent || 0)}%`}
       />
     </div>
   )
 }
+
 const DownloadProgress = () => {
   const [messageApi, contextHolder] = message.useMessage()
-  const {
-    downloadList,
-    clearDownloadList,
-    removeDownloadingApp,
-  } = useDownloadConfigStore()
-  // 获取图标 URL
-  const iconUrl = useMemo(() => {
-    return DefaultIcon
-  }, [])
+  const { currentTask, queue, history, clearHistory, removeFromQueue } = useInstallQueueStore()
 
+  // 合并所有任务列表用于显示
+  const allTasks = useMemo(() => {
+    const tasks: Store.InstallTask[] = []
+
+    // 当前正在执行的任务
+    if (currentTask) {
+      tasks.push(currentTask)
+    }
+
+    // 队列中等待的任务
+    tasks.push(...queue)
+
+    // 历史记录（最近完成的）
+    tasks.push(...history.slice(0, 10)) // 只显示最近 10 条历史
+
+    return tasks
+  }, [currentTask, queue, history])
+
+  /**
+   * 清除已完成的历史记录
+   */
   const cleanDownloadHistory = () => {
-    // 检查是否有已完成的下载记录（flag !== 'downloading'）
-    const completedItems = downloadList.filter(item => item.flag !== 'downloading')
-
-    if (completedItems.length === 0) {
+    if (history.length === 0) {
       messageApi.info('暂无已完成的下载记录!')
       return
     }
 
-    clearDownloadList()
-    messageApi.success(`已清除 ${completedItems.length} 条下载记录`)
+    clearHistory()
+    messageApi.success(`已清除 ${history.length} 条下载记录`)
   }
 
+  /**
+   * 启动应用
+   */
   const handleOpenApp = async(appId?: string) => {
     if (!appId) {
       messageApi.error('无法启动：缺少应用ID')
@@ -95,61 +99,145 @@ const DownloadProgress = () => {
       messageApi.error(`启动失败: ${errorMessage}`)
     }
   }
-  return <>
-    <div className={styles.downloadContainer}>
-      <div className={styles.downloadBox} >
-        {downloadList.length > 0 ? downloadList.map((item)=>{
-          return <div className={styles.downloadItem} key={item.appId}>
-            <div className={styles.itemLeft}>
-              <div className={styles.itemLeft_icon}><img src={item.icon || iconUrl} alt={'应用图标'} /></div>
-              <div className={styles.itemLeft_content}>
-                <p className={styles.contentName}>
-                  {item.zhName || item.name || '应用名称' }
-                </p>
-                <p className={styles.contentSize}>
-                  {item.flag === 'downloading'
-                    ? `${item.installStatus || '准备中'} ${item.percentage || 0}%`
-                    : item.size || '未知大小'
-                  }
-                </p>
-              </div>
-            </div>
-            <div className={styles.itemRight}>
-              {
-                item.flag === 'downloading'
-                  ? <DownloadIcon
-                    appId={item.appId || ''}
-                    percentage={item.percentage || 0}
-                    isDownloading={true}
-                  />
-                  : (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        className={styles.downloadBtn}
-                        onClick={() => handleOpenApp(item.appId)}
-                      >
-                        打开
-                      </button>
-                      <button
-                        className={styles.closeBtn}
-                        onClick={() => removeDownloadingApp(item.appId || '')}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )
-              }
-            </div>
+
+  /**
+   * 从队列中移除待安装的任务
+   */
+  const handleRemoveFromQueue = (taskId: string) => {
+    removeFromQueue(taskId)
+  }
+
+  /**
+   * 取消正在进行的安装
+   */
+  const handleCancelInstall = async(task: Store.InstallTask) => {
+    try {
+      await cancelInstall(task.appId)
+      handleRemoveFromQueue(task.id)
+      messageApi.success('取消安装成功')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      messageApi.error(`取消失败: ${errorMessage}`)
+    }
+  }
+
+  /**
+   * 渲染任务状态文本
+   */
+  const renderStatusText = (task: Store.InstallTask) => {
+    switch (task.status) {
+    case 'pending':
+      return '等待中'
+    case 'installing':
+      return `${task.message} ${task.progress}%`
+    case 'success':
+      return '安装完成'
+    case 'failed': {
+      // 显示错误信息，如果有详情则一并显示
+      const errorMsg = task.error || '未知错误'
+      const detail = task.errorDetail && task.errorDetail !== errorMsg ? ` (${task.errorDetail})` : ''
+      return `${errorMsg}${detail}`
+    }
+    default:
+      return task.message
+    }
+  }
+
+  /**
+   * 渲染任务操作按钮
+   */
+  const renderTaskActions = (task: Store.InstallTask) => {
+    switch (task.status) {
+    case 'pending':
+      return (
+        <button className={styles.closeBtn} onClick={() => handleRemoveFromQueue(task.id)}>
+            ×
+        </button>
+      )
+    case 'installing':
+      // 正在安装的任务显示进度和取消按钮
+      return (
+        <div className={styles.downloadIcon}>
+          <TaskProgressIcon percentage={task.progress} status={task.status} />
+          <div
+            className={styles.cancelDownload}
+            onClick={() => handleCancelInstall(task)}
+            title="取消安装"
+          >
+            ×
           </div>
-        }) : (
-          <Empty description="暂无下载任务" />
-        )}
+        </div>
+      )
+    case 'success':
+      // 安装成功显示打开按钮
+      return (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className={styles.downloadBtn} onClick={() => handleOpenApp(task.appId)}>
+              打开
+          </button>
+          <div
+            className={styles.cancelDownload}
+            onClick={() => handleRemoveFromQueue(task.id)}
+            title="移除"
+          >
+            ×
+          </div>
+        </div>
+      )
+    case 'failed':
+      // 安装失败显示错误状态
+      // return <TaskProgressIcon percentage={0} status={task.status} />
+      return (
+        <div className={styles.downloadIcon}>
+          <TaskProgressIcon percentage={0} status={task.status} />
+          <div
+            className={styles.cancelDownload}
+            onClick={() => handleRemoveFromQueue(task.id)}
+            title="移除"
+          >
+            ×
+          </div>
+        </div>
+      )
+    default:
+      return null
+    }
+  }
+
+  return (
+    <>
+      <div className={styles.downloadContainer}>
+        <div className={styles.downloadBox}>
+          {allTasks.length > 0 ? (
+            allTasks.map((task) => (
+              <div className={styles.downloadItem} key={task.id}>
+                <div className={styles.itemLeft}>
+                  <div className={styles.itemLeft_icon}>
+                    <img src={task.appInfo?.icon || DefaultIcon} alt="应用图标" />
+                  </div>
+                  <div className={styles.itemLeft_content}>
+                    <p className={styles.contentName}>
+                      {task.appInfo?.zhName || task.appInfo?.name || task.appId || '应用名称'}
+                    </p>
+                    <p className={styles.contentSize}>{renderStatusText(task)}</p>
+                  </div>
+                </div>
+                <div className={styles.itemRight}>{renderTaskActions(task)}</div>
+              </div>
+            ))
+          ) : (
+            <Empty description="暂无安装任务" />
+          )}
+        </div>
+        {contextHolder}
+        {history.length > 0 ? (
+          <div className={styles.downloadFooter} onClick={cleanDownloadHistory}>
+            清除下载记录
+          </div>
+        ) : null}
       </div>
-      {contextHolder}
-      {downloadList.length > 0 ? <div className={styles.downloadFooter} onClick={cleanDownloadHistory}>清除下载记录</div> : null}
-    </div>
-  </>
+    </>
+  )
 }
+
 export default DownloadProgress
-
-

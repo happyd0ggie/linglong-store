@@ -1,4 +1,4 @@
-import { get, post } from '..'
+import { get, post, upload } from '..'
 
 /**
  * 获取应用分类列表
@@ -29,10 +29,10 @@ export const getAppDetails = (data: API.APP.AppDetailsVO[]) => {
 /**
  * 获取应用详情（包含截图）
  * @param data 应用id和架构信息数组
- * @returns 应用详情
+ * @returns 应用详情 Map<appId, AppDetailVO[]>
  */
-export const getAppDetail = (data: API.APP.AppDetailsVO[]) => {
-  return post<API.Common.BaseResponse<API.APP.GetAppDetailsRes>>('/app/getAppDetail', data)
+export const getAppDetail = (data: API.APP.AppDetailSearchBO[]) => {
+  return post<API.Common.BaseResponse<API.APP.GetAppDetailRes>>('/app/getAppDetail', data)
 }
 
 /**
@@ -51,6 +51,15 @@ export const getWelcomeCarouselList = (data: API.APP.AppWelcomeSearchVO) => {
  */
 export const getWelcomeAppList = (data: API.APP.AppMainVO) => {
   return post<API.Common.BaseResponse<API.APP.GetAppListRes>>('/visit/getWelcomeAppList', data)
+}
+
+/**
+ * 检查应用更新
+ * @param data 应用版本检查参数数组
+ * @returns 有更新的应用列表
+ */
+export const appCheckUpdate = (data: API.APP.AppCheckVersionBO[]) => {
+  return post<API.Common.BaseResponse<API.APP.AppMainDetailDTO[]>>('/app/appCheckUpdate', data)
 }
 
 /**
@@ -108,6 +117,15 @@ export const suggest = (data: API.APP.AppLoginSaveBO) => {
 }
 
 /**
+ * 上传反馈日志
+ * @param file 日志文件
+ * @returns 日志下载链接
+ */
+export const uploadLog = (file: File) => {
+  return upload<API.Common.BaseResponse<string>>('/app/uploadLog', file)
+}
+
+/**
  * 获取组件源执行脚本
  * @returns Shell脚本字符串
  */
@@ -122,4 +140,26 @@ export const findShellString = () => {
  */
 export const updateShellString = (data: API.APP.BaseConfigDtl) => {
   return post<API.Common.BaseResponse<string>>('/app/updateShellString', data)
+}
+
+// ==================== 匿名统计相关 API ====================
+
+/**
+ * 保存启动访问记录（匿名统计）
+ * 记录商店启动时的环境信息，用于统计分析
+ * @param data 访问记录数据
+ * @returns 操作结果
+ */
+export const saveVisitRecord = (data: API.APP.SaveVisitRecordVO) => {
+  return post<API.Common.BaseResponse<null>>('/app/saveVisitRecord', data)
+}
+
+/**
+ * 保存安装/卸载记录（匿名统计）
+ * 记录用户安装和卸载应用的操作，用于统计分析
+ * @param data 安装记录数据
+ * @returns 操作结果
+ */
+export const saveInstalledRecord = (data: API.APP.SaveInstalledRecordVO) => {
+  return post<API.Common.BaseResponse<null>>('/app/saveInstalledRecord', data)
 }

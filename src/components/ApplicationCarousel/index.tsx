@@ -44,7 +44,7 @@ const AppCarousel = ({ carouselList }: { carouselList: AppInfo[] }) => {
                 <Paragraph ellipsis className={styles.carouselItemSmall}>描述：{item.description || '应用描述'}</Paragraph>
                 <Paragraph ellipsis className={styles.carouselItemSmall}>版本：{item.version || '-'}</Paragraph>
                 <Paragraph ellipsis className={styles.carouselItemSmall}>分类：{item.categoryName || '分类名称'}</Paragraph>
-                <Button type='primary' shape='round' className={styles.installButton} onClick={()=>handleNavigateToDetail(item)}>
+                <Button type='primary' size="small" shape='round' className={styles.installButton} onClick={()=>handleNavigateToDetail(item)}>
                   查看详情
                 </Button>
               </div>

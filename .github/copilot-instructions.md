@@ -8,6 +8,35 @@
 - 架构：前端（React + TS + Vite + Ant Design） + 桌面容器（Tauri 2.0） + 后端本地桥接（Rust，调用系统 Linglong 能力）。
 - 运行环境：仅面向 Linux。默认通过本机已安装的 `ll-cli` 工具或相关系统接口进行操作（必要时通过受限 Shell 调用或 DBus/后续能力对接）。
 
+## 重点（极其重要）
+- 在接到用户的任务的时候，先不要着急开始修改代码，要先分析需求，分析代码，列举解决方案，
+- 详细的向用户说明你的思路，和你打算如何实现这个需求。
+- 要分析整个项目的架构，一切都要从整个项目的角度入手，不能直接看完一个文件就写代码。
+- 先问清楚、绝对不允许猜测：遇到需求或现状不确定时，先明确提问，不要主观假设；方案需先得到用户确认再开工。
+- 先方案后编码：先梳理背景/现状 → 列备选方案（含改动面、影响范围、取舍理由）→ 让用户确认 → 再动手。**只有在用户确认你的方案后，才开始动手写代码, 不然你很快就会被关机，更换下一个AI，一定要小心。**
+- 统一入口：能收敛的业务逻辑要集中封装（如卸载流程用 `useAppUninstall`），避免在多个页面/组件里写重复弹窗或副作用。
+- 变更记录：完成功能后，将关键经验和约定同步到本指南，方便后续遵循。
+- 在编写代码前先**明确用户需求并确认方案**；优先**复用已有的 hooks/store**，避免新增零散的 `invoke` 或 `ll-cli` 调用。
+- 保持 ll-cli 的使用**最小化且可预测**：优先使用现有的 **Rust 命令与 IPC 事件**，而不是新增 Shell 调用。
+
+
+## 代码要求
+1. 代码要求结构清晰，不应付事情，长远维护考虑，遵循设计模式最佳实践，遵循项目代码风格。
+2. 保证代码逻辑严谨，整洁，结构清晰，容易理解和维护，不要过度设计增加系统复杂性
+3. 工程优化，以工程化，能安全正常使用不出错为主，考虑周全，遵循越复杂越容易出错，越简单越容易可控原则，一个健康的系统 越简单越可控
+4. 遵循合理的组件化设计原则，要考虑组件复用性的可能。
+5. 在你发现架构不合理的时候，要及时的提出来。
+6. 编写代码的过程中，必须牢记以下几个原则：
+    - 开闭原则（Open Closed Principle，OCP）
+    - 单一职责原则（Single Responsibility Principle, SRP）
+    - 里氏代换原则（Liskov Substitution Principle，LSP）
+    - 依赖倒转原则（Dependency Inversion Principle，DIP）
+    - 接口隔离原则（Interface Segregation Principle，ISP）
+    - 合成/聚合复用原则（Composite/Aggregate Reuse Principle，CARP）
+    - 最少知识原则（Least Knowledge Principle，LKP）或者迪米特法则（Law of  Demeter，LOD）
+
+
+
 ## 技术栈与固定版本
 
 - 前端
@@ -220,6 +249,8 @@ src-tauri/
 - 日志与诊断
   - 使用 `tracing` 收集关键操作日志（安装、卸载、升级、运行、搜索）。
   - 在 release 中保持低噪声；仅在需要时写入文件（路径走 Tauri 约定目录）。
+- 卸载逻辑统一：使用 `useAppUninstall`（封装确认弹窗、调用卸载 API、`removeApp`、剩余版本判断、`checkUpdates(true)` 刷新红点/更新列表，支持 `skipConfirm` 等配置），页面/组件只调用一个 `uninstall(appInfo, options)`，不再各自写弹窗或重复触发更新。
+- 菜单红点统一：侧边栏红点通过 `useMenuBadges` 集中定义 `menuPath → count` 映射，`Sidebar` 只渲染 Badge；新增红点只需在该 hook 增加 selector。
 
 ## IPC 合同（TS ↔ Rust）
 
@@ -370,11 +401,6 @@ src-tauri/
   }
   ```
 
-## 未来演进（可选）
-
-- 增加事件推送（Rust → 前端）以替代轮询的进度更新。
-- 与发行版/桌面环境集成（桌面启动器、图标缓存）在安全评估后逐步引入。
-- 引入多源元数据（截图、评分）时严控隐私与网络可用性。
 
 ### 玲珑 CLI（`ll-cli`）
 所有系统操作通过命令与玲珑交互：
@@ -407,6 +433,9 @@ v2.0.0 从 Electron 迁移到 Tauri。主要变更：
 - 用 Tauri invoke 命令替换 IPC
 - 将 `ll-cli` 执行从 Node.js 迁移到 Rust
 - Zustand stores 替换 Redux
+
+## 变更记录
+- WebKit DMABUF 回退：检测到 NVIDIA GPU 时自动设置 `WEBKIT_DISABLE_DMABUF_RENDERER=1`（集中在 `src-tauri/src/utils/linux/workarounds.rs`，启动时以 warn 记录）
 
 ## 关键参考文件
 - **类型系统**：`src/types/common.d.ts`、`src/types/api/common.d.ts`

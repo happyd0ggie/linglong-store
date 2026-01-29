@@ -58,6 +58,30 @@ declare namespace API {
             appScreenshotList?: AppScreenshot[]
         }
 
+        /**
+         * 检查更新请求参数
+         */
+        interface AppCheckVersionBO {
+            /** App包名 */
+            appId: string
+            /** 当前系统架构 */
+            arch: string
+            /** App当前版本 */
+            version: string
+        }
+
+        /**
+         * 应用详情 DTO (检查更新返回)
+         * 继承 AppMainDto 以复用大部分字段
+         */
+        interface AppMainDetailDTO extends AppMainDto {
+            base?: string
+            devId?: string
+            devName?: string
+            iconNoShow?: string
+            lan?: string
+        }
+
         interface AppScreenshot {
             /** 语言 */
             lan: string
@@ -149,7 +173,7 @@ declare namespace API {
         }
 
         /**
-         * 应用详情查询参数
+         * 应用详情查询参数（/visit/getAppDetails）
          */
         interface AppDetailsVO {
             /** 应用ID */
@@ -164,6 +188,16 @@ declare namespace API {
             module?: string
             /** 架构 */
             arch?: string
+        }
+
+        /**
+         * 应用详情查询参数（/app/getAppDetail）
+         */
+        interface AppDetailSearchBO {
+            /** App包名 */
+            appId: string
+            /** 当前系统的架构 */
+            arch: string
         }
 
         /**
@@ -251,6 +285,8 @@ declare namespace API {
             osVersion?: string
             /** 反馈意见内容 */
             message?: string
+            /** 日志文件链接 */
+            logFileUrl?: string
             /** 创建时间 */
             createTime?: string
             /** 是否删除 */
@@ -259,6 +295,64 @@ declare namespace API {
             clientIp?: string
             /** 系统架构 */
             arch?: string
+        }
+
+        /**
+         * 启动访问记录保存参数（匿名统计）
+         * 用于记录商店启动时的环境信息
+         */
+        interface SaveVisitRecordVO {
+            /** 商店版本 */
+            appVersion?: string
+            /** 客户端IP */
+            clientIp?: string
+            /** 系统架构 */
+            arch?: string
+            /** 玲珑CLI版本 */
+            llVersion?: string
+            /** 玲珑Bin组件版本 */
+            llBinVersion?: string
+            /** 玲珑组件详细信息 */
+            detailMsg?: string
+            /** 系统版本信息 */
+            osVersion?: string
+            /** 仓库名称 */
+            repoName?: string
+            /** 访问者ID/设备指纹 */
+            visitorId?: string
+        }
+
+        /**
+         * 安装/卸载记录中的应用项
+         */
+        interface InstalledRecordItem {
+            /** 应用ID */
+            appId?: string
+            /** 应用名称 */
+            name?: string
+            /** 版本 */
+            version?: string
+            /** 架构 */
+            arch?: string
+            /** 模块 */
+            module?: string
+            /** 通道 */
+            channel?: string
+        }
+
+        /**
+         * 安装/卸载记录保存参数（匿名统计）
+         * 用于记录应用安装和卸载操作
+         */
+        interface SaveInstalledRecordVO {
+            /** 访问者ID/设备指纹 */
+            visitorId?: string
+            /** 客户端IP */
+            clientIp?: string
+            /** 新增安装的应用列表 */
+            addedItems?: InstalledRecordItem[]
+            /** 卸载移除的应用列表 */
+            removedItems?: InstalledRecordItem[]
         }
 
         /**
@@ -295,14 +389,14 @@ declare namespace API {
         type GetAppListRes = API.Common.IPageData<AppMainDto>
 
         /**
-         * 获取应用详情 - 响应参数（数组）
+         * 获取应用详情 - 响应参数（/visit/getAppDetails）
          */
         type GetAppDetailsRes = AppMainDto[]
 
         /**
-         * 获取应用详情 - 响应参数
+         * 获取应用详情 - 响应参数（/app/getAppDetail）
          */
-        type GetAppDetailsRes = Record<string, AppMainDto[]>;
+        type GetAppDetailRes = Record<string, AppMainDto[]>;
 
         /**
          * 获取轮播图列表 - 响应参数

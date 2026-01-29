@@ -17,6 +17,7 @@ export const useConfigStore = create<Store.Config>((set) => ({
 
   /** 点击关闭时是直接关闭还是最小化到托盘 */
   closeOrHide: 'hide',
+
   /**
    * 更改版本检查功能的状态
    * @param value - 新的版本检查状态
@@ -32,68 +33,10 @@ export const useConfigStore = create<Store.Config>((set) => ({
   changeBaseServiceStatus: (value: boolean) => set((_state) => ({
     showBaseService: value,
   })),
-  /** 更改点击关闭时记录的状态 */
 
+  /** 更改点击关闭时记录的状态 */
   changeCloseOrHide: (value: string) => set((_state) => ({
     closeOrHide: value,
-  })),
-}))
-
-export const useDownloadConfigStore = create<Store.DownloadConfig>((set) => ({
-  // 下载应用保存列表
-  downloadList: [],
-  // 追加app到下载列表
-  addAppToDownloadList: (app: API.APP.AppMainDto | Store.DownloadApp) => set((state) => {
-    // 检查是否已存在该应用
-    const existingIndex = state.downloadList.findIndex(item => item.appId === app.appId)
-
-    if (existingIndex !== -1) {
-      // 如果已存在，更新该应用的信息
-      const newList = [...state.downloadList]
-      newList[existingIndex] = { ...(app as API.APP.AppMainDto), flag: 'downloading' }
-      return { downloadList: newList }
-    }
-
-    // 如果不存在，追加到列表
-    return {
-      downloadList: [...state.downloadList, { ...(app as API.APP.AppMainDto), flag: 'downloading' }],
-    }
-  }),
-  // 改变APP下载状态(已下载和下载中)
-  changeAppDownloadStatus: (appId: string, status = 'downloaded') => set((state) => ({
-    downloadList: state.downloadList.map((app: Store.DownloadApp) => {
-      if (app.appId === appId) {
-        // 返回新的对象以保持不可变性
-        return { ...app, flag: status }
-      }
-      return app
-    }),
-
-  })),
-  // 更新APP安装进度
-  updateAppProgress: (appId: string, percentage: number, status: string) => set((state) => {
-    return {
-      downloadList: state.downloadList.map((app: Store.DownloadApp) => {
-        if (app.appId === appId) {
-          return {
-            ...app,
-            percentage,
-            installStatus: status,
-            // 如果达到100%，将状态改为已下载
-            flag: percentage >= 100 ? 'downloaded' : 'downloading',
-          }
-        }
-        return app
-      }),
-    }
-  }),
-  // 清空下载列表
-  clearDownloadList: () => set((state) => ({
-    downloadList: state.downloadList.filter((app: Store.DownloadApp) => app.flag === 'downloading'),
-  })),
-  // 移除下载中的应用
-  removeDownloadingApp: (appId: string) => set((state) => ({
-    downloadList: state.downloadList.filter((app: Store.DownloadApp) => app.appId !== appId),
   })),
 }))
 
@@ -107,24 +50,4 @@ export const useDownloadConfigStore = create<Store.DownloadConfig>((set) => ({
 export const tauriAppConfigHandler = createTauriStore('ConfigStore', useConfigStore as any, {
   saveOnChange: true, // 配置变更时自动保存到磁盘
   autoStart: true, // 应用启动时自动从磁盘加载配置
-})
-
-// 保存下载列表
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const tauriDownloadConfigHandler = createTauriStore('downloadConfigStore', useDownloadConfigStore as any, {
-  saveOnChange: true, // 配置变更时自动保存到磁盘
-  autoStart: false, // 禁用自动启动，我们手动加载并过滤
-})
-
-// 手动启动并过滤掉 downloading 状态的残留数据
-tauriDownloadConfigHandler.start().then(() => {
-  const state = useDownloadConfigStore.getState()
-  const originalCount = state.downloadList.length
-
-  // 过滤掉正在下载中的残留数据
-  const filteredList = state.downloadList.filter((app: Store.DownloadApp) => app.flag !== 'downloading')
-
-  if (filteredList.length < originalCount) {
-    useDownloadConfigStore.setState({ downloadList: filteredList })
-  }
 })

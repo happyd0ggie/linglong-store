@@ -59,6 +59,25 @@
         font-weight: 500;
       }
     }
+
+    .menuBadge {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+
+      :global(.ant-badge-count) {
+        // min-width: 1.2rem;
+        width: 1.2rem;
+        height: 1.2rem;
+        line-height: 1.5rem;
+        font-size: 0.75rem;
+        transform: translateY(-2px);
+        margin-left: 0.25rem;
+        box-shadow: none;
+        border-radius: 100%;
+        align-items: center;
+      }
+    }
   }
 
   .menuItemIcon {

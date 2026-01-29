@@ -1,47 +1,157 @@
 /**
  * 全局安装进度监听 Hook
- * 监听所有应用的安装进度事件和取消事件，并更新到下载列表中
+ * 监听所有应用的安装进度事件，并更新到安装队列 Store 中
+ *
+ * 支持新的事件类型：
+ * - eventType: "progress" | "error" | "message"
+ * - 错误事件包含 code 和 errorDetail 字段
+ *
+ * 注意：此 Hook 应该在应用根组件中调用一次，确保全局监听
  */
 import { useEffect } from 'react'
-import { onInstallProgress, onInstallCancelled } from '@/apis/invoke'
-import { useDownloadConfigStore } from '@/stores/appConfig'
+import { message } from 'antd'
+import { onInstallProgress } from '@/apis/invoke'
+import { useInstallQueueStore } from '@/stores/installQueue'
 import { useUpdatesStore } from '@/stores/updates'
 import { useInstalledAppsStore } from '@/stores/installedApps'
+import { sendInstallRecord } from '@/services/analyticsService'
+import { getInstallErrorMessage, InstallErrorCode } from '@/constants/installErrorCodes'
 
 export const useGlobalInstallProgress = () => {
-  const { updateAppProgress, removeDownloadingApp } = useDownloadConfigStore()
-  const checkUpdates = useUpdatesStore(state => state.checkUpdates)
-  const checkingUpdates = useUpdatesStore(state => state.checking)
-  const removeUpdate = useUpdatesStore(state => state.removeUpdate)
-  const fetchInstalledApps = useInstalledAppsStore(state => state.fetchInstalledApps)
+  const { updateProgress, markSuccess, markFailed, currentTask } = useInstallQueueStore()
+  const checkUpdates = useUpdatesStore((state) => state.checkUpdates)
+  const checkingUpdates = useUpdatesStore((state) => state.checking)
+  const fetchInstalledApps = useInstalledAppsStore((state) => state.fetchInstalledApps)
+  const [messageApi] = message.useMessage()
+
 
   useEffect(() => {
     let unlistenProgress: (() => void) | null = null
-    let unlistenCancel: (() => void) | null = null
 
     const setupListener = async() => {
       // 监听安装进度
       unlistenProgress = await onInstallProgress((progress) => {
-        // 更新下载列表中对应 App 的进度
-        updateAppProgress(progress.appId, progress.percentage, progress.status)
+        console.info('[useGlobalInstallProgress] Progress received:', progress)
 
-        // 安装/更新完成后立即从待更新列表移除，并刷新列表/安装信息
-        if (progress.percentage >= 100 || progress.status.includes('安装完成')) {
-          removeUpdate(progress.appId)
+        const appName = currentTask?.appInfo?.zhName || currentTask?.appInfo?.name || progress.appId
+
+        // 根据事件类型处理
+        switch (progress.eventType) {
+        case 'progress': {
+          // 更新队列中对应任务的进度
+          updateProgress(progress.appId, progress.percentage, progress.status)
+
+          // 检查是否安装完成（百分比达到 100）
+          if (progress.percentage >= 100) {
+            console.info(`[useGlobalInstallProgress] Install completed for: ${progress.appId}`)
+
+            // 标记任务成功
+            markSuccess(progress.appId)
+
+            // 显示成功消息
+            messageApi.success({
+              content: `${appName} 安装成功！`,
+              key: `install-success-${progress.appId}`,
+            })
+
+            // 发送安装统计记录（异步，不阻塞主流程）
+            if (currentTask?.appInfo) {
+              const appInfo = currentTask.appInfo
+              sendInstallRecord({
+                appId: appInfo.appId,
+                name: appInfo.name,
+                version: currentTask.version || appInfo.version,
+                arch: appInfo.arch,
+                module: appInfo.module,
+                channel: appInfo.channel,
+              }).catch((err) => console.warn('[useGlobalInstallProgress] sendInstallRecord failed:', err))
+            }
+
+            // 后台刷新已安装列表和更新列表
+            if (!checkingUpdates) {
+              checkUpdates()
+            }
+            fetchInstalledApps().catch((err) =>
+              console.error('[useGlobalInstallProgress] Failed to refresh installed apps:', err),
+            )
+          }
+          break
         }
 
-        // 后台刷新更新列表（正在检查则跳过本次），确保数据最终一致
-        if ((progress.percentage >= 100 || progress.status.includes('安装完成')) && !checkingUpdates) {
-          checkUpdates()
-          fetchInstalledApps().catch(err => console.error('[useGlobalInstallProgress] Failed to refresh installed apps:', err))
+        case 'error': {
+          // 错误事件
+          const errorCode = progress.code
+          const errorMessage = getInstallErrorMessage(errorCode, progress.status)
+          const errorDetail = progress.errorDetail || progress.message
+
+          console.error(
+            `[useGlobalInstallProgress] Install error for: ${progress.appId}`,
+            `code=${errorCode}`,
+            `message=${errorMessage}`,
+            `detail=${errorDetail}`,
+          )
+
+          // 标记任务失败，传入错误码和详情
+          markFailed(progress.appId, errorMessage, errorCode, errorDetail)
+
+          // 根据错误码类型显示不同的消息
+          if (errorCode === InstallErrorCode.Cancelled) {
+            // 取消操作使用 info 级别
+            messageApi.info({
+              content: `${appName} 安装已取消`,
+              key: `install-cancelled-${progress.appId}`,
+            })
+          } else {
+            // 其他错误使用 error 级别
+            messageApi.error({
+              content: `${appName} ${errorMessage}`,
+              key: `install-failed-${progress.appId}`,
+            })
+          }
+          break
+        }
+
+        case 'message': {
+          // 消息事件仅更新状态文本，不改变进度或结果
+          updateProgress(progress.appId, progress.percentage, progress.status)
+          break
+        }
+
+        default: {
+          // 兼容旧格式（没有 eventType 的情况）
+          // 根据 progress 字段判断是否是错误
+          updateProgress(progress.appId, progress.percentage, progress.status)
+
+          // 检查是否安装完成
+          if (progress.percentage >= 100 || progress.status.includes('安装完成')) {
+            markSuccess(progress.appId)
+            messageApi.success({
+              content: `${appName} 安装成功！`,
+              key: `install-success-${progress.appId}`,
+            })
+
+            if (!checkingUpdates) {
+              checkUpdates()
+            }
+            fetchInstalledApps().catch((err) =>
+              console.error('[useGlobalInstallProgress] Failed to refresh installed apps:', err),
+            )
+          }
+
+          // 检查是否安装失败
+          if (progress.status.includes('失败') || progress.status.includes('取消')) {
+            markFailed(progress.appId, progress.status)
+            messageApi.error({
+              content: `${appName} ${progress.status}`,
+              key: `install-failed-${progress.appId}`,
+            })
+          }
+          break
+        }
         }
       })
 
-      // 监听安装取消事件
-      unlistenCancel = await onInstallCancelled((event) => {
-        // 从下载列表中移除该应用
-        removeDownloadingApp(event.appId)
-      })
+      console.info('[useGlobalInstallProgress] Listener setup complete')
     }
 
     setupListener()
@@ -49,11 +159,10 @@ export const useGlobalInstallProgress = () => {
     // 组件卸载时清理监听器
     return () => {
       if (unlistenProgress) {
+        console.info('[useGlobalInstallProgress] Cleaning up listener')
         unlistenProgress()
       }
-      if (unlistenCancel) {
-        unlistenCancel()
-      }
     }
-  }, [updateAppProgress, removeDownloadingApp, checkUpdates, checkingUpdates, removeUpdate, fetchInstalledApps])
+  }, [updateProgress, markSuccess, markFailed, currentTask, checkUpdates, checkingUpdates, fetchInstalledApps])
 }
+

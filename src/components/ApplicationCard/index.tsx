@@ -1,15 +1,16 @@
-import { Button, message, Modal, Typography } from 'antd'
+import { Button, message, Typography } from 'antd'
 import styles from './index.module.scss'
 import { useNavigate } from 'react-router-dom'
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import DefaultIcon from '@/assets/linyaps.svg'
 
-import { uninstallApp, runApp } from '@/apis/invoke'
+import { runApp } from '@/apis/invoke'
 import { useInstalledAppsStore } from '@/stores/installedApps'
 import { useUpdatesStore } from '@/stores/updates'
-import { useDownloadConfigStore } from '@/stores/appConfig'
+import { useInstallQueueStore } from '@/stores/installQueue'
 import { useAppInstall } from '@/hooks/useAppInstall'
-import { compareVersions } from '@/util/checkVersion'
+import { useAppUninstall } from '@/hooks/useAppUninstall'
+import compareVersions from '@/util/checkVersion'
 
 import { OperateType } from '@/constants/applicationCard'
 
@@ -32,11 +33,12 @@ const ApplicationCard = ({
   const [buttonLoading, setButtonLoading] = useState(false)
   const [cardLoading, setCardLoading] = useState(false)
 
-  const { handleInstall } = useAppInstall()
+  const { handleInstall, isAppInQueue } = useAppInstall()
 
-  const { installedApps, removeApp } = useInstalledAppsStore()
+  const { installedApps } = useInstalledAppsStore()
   const updates = useUpdatesStore(state => state.updates)
-  const downloadList = useDownloadConfigStore(state => state.downloadList)
+  const { currentTask, queue } = useInstallQueueStore()
+  const { uninstall } = useAppUninstall()
 
   useEffect(() => {
     if (appInfo && appInfo.appId && !appInfo.appId.startsWith('empty-')) {
@@ -82,26 +84,19 @@ const ApplicationCard = ({
     return OPERATE_LIST[resolvedOperateId] || OPERATE_LIST[OperateType.INSTALL]
   }, [resolvedOperateId])
 
-  // 监听全局下载列表，保持按钮 loading 与实际安装/更新进度同步
+  // 监听安装队列，保持按钮 loading 与实际安装/更新进度同步
   useEffect(() => {
     if (!appInfo?.appId) {
       return
     }
-    const target = downloadList.find(app => app.appId === appInfo.appId)
 
-    if (!target) {
-      if (resolvedOperateId === OperateType.INSTALL || resolvedOperateId === OperateType.UPDATE) {
-        setButtonLoading(false)
-      }
-      return
-    }
+    // 检查当前应用是否在队列中或正在安装
+    const isInQueue = isAppInQueue(appInfo.appId)
 
-    if (target.flag === 'downloading') {
-      setButtonLoading(true)
-    } else {
-      setButtonLoading(false)
+    if (resolvedOperateId === OperateType.INSTALL || resolvedOperateId === OperateType.UPDATE) {
+      setButtonLoading(isInQueue)
     }
-  }, [appInfo?.appId, downloadList, resolvedOperateId])
+  }, [appInfo?.appId, currentTask, queue, resolvedOperateId, isAppInQueue])
 
   // 获取图标 URL
   const iconUrl = useMemo(() => {
@@ -128,28 +123,17 @@ const ApplicationCard = ({
         setButtonLoading(false)
         return
       }
-      // 确认卸载操作
-      Modal.confirm({
-        title: '确认卸载',
-        content: `确认要卸载 ${appInfo.zhName || appInfo.name || appInfo.appId} 的版本 ${appInfo.version} 吗`,
-        okText: '确认',
-        cancelText: '取消',
-        onOk: async() => {
-          try {
-            await uninstallApp(appInfo.appId as string, appInfo.version as string)
-            removeApp(appInfo.appId as string, appInfo.version as string)
-            message.success('卸载成功')
-          } catch (error) {
-            console.error('[handleUninstall] 卸载失败:', error)
-            message.error(`卸载失败: ${error}`)
-          } finally {
-            setButtonLoading(false)
-          }
+      uninstall(
+        {
+          appId: appInfo.appId as string,
+          version: appInfo.version as string,
+          name: appInfo.name as string,
+          zhName: appInfo.zhName as string,
         },
-        onCancel: () => {
-          setButtonLoading(false)
-        },
+      ).finally(() => {
+        setButtonLoading(false)
       })
+      return
     }
 
     // 如果是安装操作，调用安装
@@ -187,7 +171,7 @@ const ApplicationCard = ({
 
       handleRunApp()
     }
-  }, [resolvedOperateId, appInfo, handleInstall, removeApp, runApp])
+  }, [resolvedOperateId, appInfo, handleInstall, runApp, uninstall])
 
   return (
     <div
@@ -221,6 +205,7 @@ const ApplicationCard = ({
       <div className={styles.actions}>
         <Button
           type='primary'
+          shape='round'
           style={
             resolvedOperateId === OperateType.OPEN
               ? { backgroundColor: '#1AD56C', borderColor: '#1AD56C' } // 绿色

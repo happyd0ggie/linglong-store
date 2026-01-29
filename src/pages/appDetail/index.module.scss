@@ -114,22 +114,47 @@
                         width: 18%;
                         min-width: 5rem;
                         font-size: 0.875rem;
-                        margin-right: 1rem;
+                    margin-right: 1rem;
+                    display: flex;
+                    flex-flow: column nowrap;
+                    justify-content: center;
+                    align-items: center;
+
+                    :global(.ant-typography) {
+                        width: 100%;
+                        text-align: center;
+                        margin-bottom: 0;
+                    }
+
+                    .appIdRow {
+                        width: 100%;
                         display: flex;
-                        flex-flow: column nowrap;
-                        justify-content: center;
                         align-items: center;
-
-                        :global(.ant-typography) {
-                            width: 100%;
-                            text-align: center;
-                            margin-bottom: 0;
-                        }
+                        gap: 0.375rem;
                     }
 
-                    .separate {
-                        position: relative;
+                    .appIdValue {
+                        flex: 1;
+                        min-width: 0;
+                        width: auto;
+                        text-align: center;
+                        margin-bottom: 0;
                     }
+
+                    .copyButton {
+                        padding: 0;
+                        color: var(--ant-color-text-tertiary);
+                    }
+
+                    .copyButton:hover {
+                        color: var(--ant-color-text);
+                        background: transparent;
+                    }
+                }
+
+                .separate {
+                    position: relative;
+                }
 
                     .separate::after {
                         content: '';

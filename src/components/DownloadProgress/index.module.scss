@@ -14,8 +14,11 @@
         flex-flow: column nowrap;
         align-items: center;
         gap: 1rem;
+        /* 为了避免系统/浏览器的浮动滚动条覆盖内容，保留滚动槽并预留右侧内边距 */
         overflow-y: scroll;
+        scrollbar-gutter: stable both-edges;
         padding-top: 0.5rem;
+        padding-right: 0.6rem; /* fallback: 预留空间防止覆盖叉号 */
 
         .downloadItem {
             width: 100%;
@@ -89,6 +92,9 @@
                         border-radius: 1rem;
                         font-size: 1rem;
                         color: var(--ant-color-warning);
+                        padding: 0.125rem 0.25rem; /* 增加可点击区域 */
+                        line-height: 1;
+                        z-index: 2;
                     }
 
                     .cancelDownload:hover {

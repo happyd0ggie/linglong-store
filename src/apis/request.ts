@@ -15,10 +15,15 @@ const alovaInstance = createAlova({
   requestAdapter: adapterFetch(),
   timeout: 10000,
   beforeRequest(method) {
-    // 设置默认请求头
-    method.config.headers = {
-      'Content-Type': 'application/json',
-      ...method.config.headers,
+    const isFormData = typeof FormData !== 'undefined' && method.data instanceof FormData
+    if (!isFormData) {
+      // 设置默认请求头
+      method.config.headers = {
+        'Content-Type': 'application/json',
+        ...method.config.headers,
+      }
+    } else if (method.config.headers) {
+      delete (method.config.headers as Record<string, string>)['Content-Type']
     }
   },
   responded: {

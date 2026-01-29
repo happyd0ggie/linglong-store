@@ -16,6 +16,7 @@ import { useGlobalStore } from '@/stores/global'
 import { useUpdatesStore } from '@/stores/updates'
 import { useConfigStore } from '@/stores/appConfig'
 import { useInstalledAppsStore } from '@/stores/installedApps'
+import { sendVisitRecord } from '@/services/analyticsService'
 // import { arch } from '@tauri-apps/plugin-os'
 
 // 暂时注释的 Antd Layout 组件，可能用于未来的布局重构
@@ -31,6 +32,13 @@ const AppLayout = () => {
   const startAutoRefresh = useUpdatesStore(state => state.startAutoRefresh)
   const stopAutoRefresh = useUpdatesStore(state => state.stopAutoRefresh)
 
+  // 初始化完成后发送访问记录
+  useEffect(() => {
+    if (isInited) {
+      sendVisitRecord().catch((err) => console.warn('[AppLayout] Auto sendVisitRecord failed', err))
+    }
+  }, [isInited])
+
   useEffect(() => {
     startAutoRefresh()
     return () => {
@@ -45,7 +53,6 @@ const AppLayout = () => {
 
   /** 从已安装应用store中获取更新和加载方法 */
   const {
-    // needUpdateApps,
     fetchInstalledApps,
   } = useInstalledAppsStore()
 
