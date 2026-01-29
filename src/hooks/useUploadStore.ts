@@ -97,7 +97,7 @@ function isBetaVersion(version: string): boolean {
 
 /**
  * 解析版本号，返回主版本号和 beta 版本号
- * @param version 版本号（如 "v2.0.0-beta.1" 或 "2.0.0"）
+ * @param version 版本号（如 "v2.0.1" 或 "2.0.0"）
  * @returns { major: [2, 0, 0], beta: 1 } 或 { major: [2, 0, 0], beta: null }
  */
 function parseVersion(version: string): { major: number[]; beta: number | null } {
@@ -118,7 +118,7 @@ function parseVersion(version: string): { major: number[]; beta: number | null }
 
 /**
  * 对比两个语义化版本（x.y.z）
- * @param localVersion 本地版本（如 "2.0.0" 或 "v2.0.0-beta.1"）
+ * @param localVersion 本地版本（如 "2.0.0" 或 "v2.0.1"）
  * @param remoteVersion 远程版本（如 "2.0.1" 或 "v2.0.0-beta.2"）
  * @returns 1: 远程更新；-1: 本地更新；0: 版本一致
  */

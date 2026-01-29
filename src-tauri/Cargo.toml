@@ -1,6 +1,6 @@
 [package]
 name = "linglong-store"
-version = "2.0.0-beta.1"
+version = "2.0.1"
 description = "玲珑应用商店"
 authors = ["Shirosu<xfreell@163.com>"]
 edition = "2021"
