@@ -152,13 +152,13 @@ jobs:
             #### x86_64 (AMD64)
              🔹 `*-amd64.AppImage` / `*-x86_64.AppImage` - 通用格式，下载后添加可执行权限即可运行
              🔹 `*_amd64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
-             🔹 `*-amd64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+             🔹 `*-amd64.rpm` - 适用于 Fedora/openSUSE 等发行版
              🔹 `linglong-store-amd64` - 原始可执行文件
             
             #### ARM64 (aarch64)
              🔹 `*-arm64.AppImage` / `*-aarch64.AppImage` - 通用格式，下载后添加可执行权限即可运行
              🔹 `*_arm64.deb` / `*_aarch64.deb` - 适用于 Debian/Ubuntu/Deepin 等发行版
-             🔹 `*-arm64.rpm` / `*-aarch64.rpm` - 适用于 Fedora/openSUSE/UOS 等发行版
+             🔹 `*-arm64.rpm` / `*-aarch64.rpm` - 适用于 Fedora/openSUSE 等发行版
              🔹 `linglong-store-arm64` - 原始可执行文件
             
             ### 系统要求
