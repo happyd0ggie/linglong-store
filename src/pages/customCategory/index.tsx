@@ -113,7 +113,7 @@ const OfficeApps = () => {
         if (scrollTop + clientHeight >= scrollHeight - 100) {
           if (pageNo < totalPages) {
             setPageNo(pageNo + 1)
-            getAllAppList({ categoryId: activeCategory, pageNo: pageNo + 1 })
+            getAllAppList({ pageNo: pageNo + 1 })
           }
         }
       }
