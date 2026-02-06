@@ -27,25 +27,25 @@
     gap: 0.5rem;
     overflow: hidden;
 
-    .additional {
-      position: absolute;
-      top: 0.125rem;
-      right: -1.5rem;
-      display: block;
-      width: 1rem;
-      height: 1rem;
-      line-height: 1rem;
-      font-size: 0.5rem;
-      color: var(--ant-color-text-light-solid);
-      text-align: center;
-      background: var(--ant-color-highlight);
-      border-radius: 50%;
-      font-style: normal;
-    }
+    // .additional {
+    //   position: absolute;
+    //   top: 0.125rem;
+    //   right: -1.5rem;
+    //   display: block;
+    //   width: 1rem;
+    //   height: 1rem;
+    //   line-height: 1rem;
+    //   font-size: 0.5rem;
+    //   color: var(--ant-color-text-light-solid);
+    //   text-align: center;
+    //   background: var(--ant-color-highlight);
+    //   border-radius: 50%;
+    //   font-style: normal;
+    // }
 
-    .notAdditional {
-      display: none;
-    }
+    // .notAdditional {
+    //   display: none;
+    // }
 
     &:hover {
       background-color: var(--ant-color-fill-secondary);
@@ -96,39 +96,54 @@
     opacity: 1;
     transition: opacity 0.2s ease-in-out;
     position: relative;
+    letter-spacing: 0.5rem;
   }
 
-  .speedToolContainer {
-    flex: 0 0 7.5rem;
+  .footerIcons {
     display: flex;
+    gap: 0.5rem;
+    justify-content: space-around;
     align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    transition: all 0.2s ease-in-out;
-    position: relative;
+    padding: 0.5rem 0;
 
-    .speedTool {
-      flex: 0 0 2.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: absolute;
-      z-index: 100;
-      opacity: 1;
-      transition: all 0.2s ease-in-out;
-    }
-
-    .speedToolIcon {
-      flex: 0 0 2.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: absolute;
-      z-index: 99;
-      opacity: 0;
-      transition: all 0.2s ease-in-out;
+    img {
+      width: 2rem;
+      height: 2rem;
+      cursor: pointer;
     }
   }
+
+  // .speedToolContainer {
+  //   flex: 0 0 7.5rem;
+  //   display: flex;
+  //   align-items: center;
+  //   justify-content: center;
+  //   overflow: hidden;
+  //   transition: all 0.2s ease-in-out;
+  //   position: relative;
+
+  //   .speedTool {
+  //     flex: 0 0 2.25rem;
+  //     display: flex;
+  //     align-items: center;
+  //     justify-content: center;
+  //     position: absolute;
+  //     z-index: 100;
+  //     opacity: 1;
+  //     transition: all 0.2s ease-in-out;
+  //   }
+
+  //   .speedToolIcon {
+  //     flex: 0 0 2.25rem;
+  //     display: flex;
+  //     align-items: center;
+  //     justify-content: center;
+  //     position: absolute;
+  //     z-index: 99;
+  //     opacity: 0;
+  //     transition: all 0.2s ease-in-out;
+  //   }
+  // }
 }
 
 
@@ -136,29 +151,20 @@
   .sidebar {
     .menu {
       .menuItem {
+        padding: 0;
+
         .menuItemText {
           opacity: 0;
+
         }
       }
     }
 
-    .speedToolContainer {
-      flex: 0 0 2.25rem;
-
-      .speedTool {
-        z-index: 99;
-        opacity: 0;
-      }
-
-      .speedToolIcon {
-        z-index: 100;
-        opacity: 1;
-
-        :global(.i-icon) {
-          width: 1rem;
-          height: 1rem;
-        }
-      }
+    .footerIcons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
+
   }
 }

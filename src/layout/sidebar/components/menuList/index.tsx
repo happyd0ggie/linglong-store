@@ -1,60 +1,53 @@
-import { Star, SettingTwo, Hourglass, ApplicationOne, UpdateRotation, ApplicationTwo, Info } from '@icon-park/react'
+import recommend from '@/assets/icons/recommend.svg'
+import recommendActive from '@/assets/icons/recommendA.svg'
+import rank from '@/assets/icons/rank.svg'
+import rankA from '@/assets/icons/rankA.svg'
+import update from '@/assets/icons/update.svg'
+import updateA from '@/assets/icons/updateA.svg'
+import classify from '@/assets/icons/classify.svg'
+import classifyA from '@/assets/icons/classifyA.svg'
+// import office from '@/assets/icons/office.svg'
+// import officeA from '@/assets/icons/officeA.svg'
+// import system from '@/assets/icons/system.svg'
+// import systemA from '@/assets/icons/systemA.svg'
+// import develop from '@/assets/icons/develop.svg'
+// import developA from '@/assets/icons/developA.svg'
+// import games from '@/assets/icons/games.svg'
+// import gamesA from '@/assets/icons/gamesA.svg'
+
 
 export default [
   {
-    menuName: '玲珑推荐',
+    menuName: '推荐',
     menuPath: '/',
-    icon: <Star theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <Star theme="filled" size="16" fill="var(--ant-color-primary-text)"/>,
+    icon: recommend,
+    activeIcon: recommendActive,
+    show: true,
     index: 0,
   },
-  // {
-  //   menuName: '排行榜',
-  //   menuPath: '/ranking',
-  //   icon: <Ranking theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-  //   activeIcon: <Ranking theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
-  //   index: 1,
-  // },
   {
-    menuName: '全部应用',
+    menuName: '排行榜',
+    menuPath: '/ranking',
+    icon: rank,
+    activeIcon: rankA,
+    show: false,
+    index: 1,
+  },
+  {
+    menuName: '分类',
     menuPath: '/allapps',
-    icon: <ApplicationOne theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <ApplicationOne theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
+    icon: classify,
+    activeIcon: classifyA,
+    show: true,
     index: 2,
   },
   {
-    menuName: '我的应用',
-    menuPath: '/my_apps',
-    icon: <ApplicationTwo theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <ApplicationTwo theme="filled" size="16" fill="var(--ant-color-primary-text)"/>,
-    index: 4,
-  },
-  {
-    menuName: '软件更新',
+    menuName: '更新',
     menuPath: '/update_apps',
-    icon: <UpdateRotation theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <UpdateRotation theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
-    index: 5,
-  },
-  {
-    menuName: '玲珑进程',
-    menuPath: '/process',
-    icon: <Hourglass theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <Hourglass theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
-    index: 6,
-  },
-  {
-    menuName: '基础设置',
-    menuPath: '/setting',
-    icon: <SettingTwo theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <SettingTwo theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
+    icon: update,
+    show: true,
+    activeIcon: updateA,
     index: 7,
   },
-  {
-    menuName: '关于程序',
-    menuPath: '/about',
-    icon: <Info theme="outline" size="16" fill="var(--ant-color-text-secondary)"/>,
-    activeIcon: <Info theme="outline" size="16" fill="var(--ant-color-primary-text)"/>,
-    index: 8,
-  },
+
 ]

@@ -10,10 +10,12 @@
 
 .applicationCard {
   flex: 1;
-  background-color: var(--ant-color-bg-container);
+  // background-color: var(--ant-color-bg-container);
+  background-color: #f6f6f6;
   border-radius: 0.5rem;
   display: flex;
-  border: 1px solid var(--ant-color-border);
+  // border: 1px solid var(--ant-color-border);
+  border: 1px solid #f6f6f6;
   min-width: 18rem;
   padding: 0.5rem 1rem;
   height: 7.5rem;
@@ -68,52 +70,73 @@
     }
   }
 
-  .content {
-    flex: 1;
-    display: flex;
+  .containerD {
     flex-direction: column;
-    justify-content: center;
-    min-width: 0;
 
-    .title {
-      color: var(--ant-color-text);
-      min-width: 0;
-
-      :global(.ant-typography) {
-        margin: 0;
-      }
-    }
-
-    .description {
-      font-size: 0.75rem;
-      color: var(--ant-color-text-secondary);
-      min-width: 0;
-
-      :global(.ant-typography) {
-        margin: 0.25rem 0;
-      }
-    }
-
-    .version {
-      font-size: 0.7rem;
-      color: var(--ant-color-text-tertiary);
-      margin-top: 0.25rem;
-
-      :global(.ant-typography) {
-        margin: 0;
-      }
-    }
   }
 
-  .actions {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    margin-left: 0.5rem;
+  .containerR {
+    flex-direction: row;
+    align-items: center;
+  }
 
-    .installButton {
-      // border-radius: 0.25rem;
-      min-width: 4rem;
+  .container {
+    height: 100%;
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+
+      .title {
+        color: var(--ant-color-text);
+        min-width: 0;
+
+        :global(.ant-typography) {
+          margin: 0;
+        }
+      }
+
+      .description {
+        font-size: 0.75rem;
+        color: var(--ant-color-text-secondary);
+        min-width: 0;
+        max-width: 90%;
+
+        :global(.ant-typography) {
+          margin: 0.25rem 0;
+        }
+      }
+
+      .version {
+        font-size: 0.75rem;
+        color: var(--ant-color-text-tertiary);
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+
+        :global(.ant-typography) {
+          margin: 0;
+        }
+      }
+    }
+
+    .actions {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      // margin-left: 0.5rem;
+
+      .installButton {
+        // border-radius: 0.25rem;
+        width: 4.25rem;
+      }
     }
   }
 }

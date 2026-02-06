@@ -27,6 +27,7 @@ const OPERATE_LIST: COMP.APPCARD.OperateItem[] = [
 const ApplicationCard = ({
   operateId = OperateType.INSTALL,
   appInfo = {},
+  type = 'default',
 }: COMP.APPCARD.ApplicationCardProps) => {
   const navigate = useNavigate()
 
@@ -181,43 +182,49 @@ const ApplicationCard = ({
       <div className={styles.icon}>
         <img src={iconUrl} alt={appInfo.name || '应用图标'} />
       </div>
+      <div className={`${type === 'recommend' ? styles.containerR : styles.containerD} ${styles.container}`}>
+        <div className={styles.content}>
+          <div className={styles.title}>
+            <Title level={5} ellipsis={{ tooltip: appInfo.zhName || appInfo.name || '应用名称' }}>
+              {appInfo.zhName || appInfo.name || '应用名称'}
+            </Title>
+          </div>
 
-      <div className={styles.content}>
-        <div className={styles.title}>
-          <Title level={5} ellipsis={{ tooltip: appInfo.zhName || appInfo.name || '应用名称' }}>
-            {appInfo.zhName || appInfo.name || '应用名称'}
-          </Title>
-        </div>
-
-        <div className={styles.description}>
-          <Paragraph ellipsis={{ tooltip: appInfo.description || '应用简介', rows: 2, expandable: false }}>
-            {appInfo.description || '应用简介'}
-          </Paragraph>
-        </div>
-
-        <div className={styles.version}>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
+          <div className={styles.description}>
+            <Paragraph ellipsis={{ tooltip: appInfo.description || '应用简介', rows: 1, expandable: false }}>
+              {appInfo.description || '应用简介'}
+            </Paragraph>
+          </div>
+          {
+            type === 'recommend' && (<div className={styles.version}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
             版本: {appInfo.version || '-'}
-          </Text>
-        </div>
-      </div>
-
-      <div className={styles.actions}>
-        <Button
-          type='primary'
-          shape='round'
-          style={
-            resolvedOperateId === OperateType.OPEN
-              ? { backgroundColor: '#1AD56C', borderColor: '#1AD56C' } // 绿色
-              : {}
+              </Text><Text type="secondary" style={{ fontSize: '12px', color: '#cda354' }}>
+            TOP
+              </Text>
+            </div>
+            )
           }
-          className={styles.installButton}
-          size="small"
-          loading={buttonLoading}
-          onClick={handleOperateClick}
-        >
-          {currentOperate.name}
-        </Button>
+        </div>
+
+        <div className={styles.actions}>
+          <Button
+            type='primary'
+            shape='round'
+            style={
+              resolvedOperateId === OperateType.OPEN
+                ? { backgroundColor: '#fff', borderColor: '#d8d8d8', color: '#2c2c2c' } // 白底黑字
+                : {}
+            }
+            className={styles.installButton}
+            size="small"
+            loading={buttonLoading}
+            onClick={handleOperateClick}
+          >
+            {currentOperate.name}
+          </Button>
+        </div>
+
       </div>
     </div>
   )

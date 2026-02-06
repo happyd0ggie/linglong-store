@@ -1,48 +1,49 @@
-.myAppsPage {
+.myApplications {
+  width: 100%;
   height: 100%;
-  padding: 1.5rem;
-  overflow-y: auto;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 
-  .title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-  }
-
-  .applicationList {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-    gap: 16px;
-    align-content: start;
-    padding-bottom: 2rem;
-
-    &::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: var(--color-fill-2);
-      border-radius: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: var(--color-fill-3);
-      border-radius: 4px;
-
-      &:hover {
-        background: var(--color-fill-4);
-      }
-    }
-  }
-
-  .loadingTip {
-    grid-column: 1 / -1;
+  .header {
+    width: 100%;
+    height: 2rem;
     display: flex;
-    justify-content: center;
     align-items: center;
-    padding: 2rem 0;
-    color: var(--color-text-2);
-    font-size: 0.875rem;
+    padding: 1.25rem;
+    gap: 1rem;
+    border-bottom: 1px solid var(--ant-color-border);
+    margin-bottom: 1rem;
+
+    .title {
+      cursor: pointer;
+      font-size: 1rem;
+      text-align: center;
+      font-weight: normal;
+      color: var(--ant-color-text);
+    }
+
+    .activeTitle {
+      color: var(--ant-color-primary);
+      position: relative;
+    }
+
+    .activeTitle::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: -0.25rem;
+      width: 100%;
+      height: 2px;
+      background: var(--ant-color-primary);
+    }
+  }
+
+  .content {
+    width: 100%;
+    flex: 1;
+    overflow-y: auto;
   }
 }

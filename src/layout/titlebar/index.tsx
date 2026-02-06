@@ -6,7 +6,7 @@
 import styles from './index.module.scss'
 import { SetStateAction, useCallback, useEffect, useState } from 'react'
 import { Close, Copy, Minus, Square } from '@icon-park/react'
-import { Popover, Modal, message } from 'antd'
+import { Modal, message } from 'antd'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { cancelInstall, quitApp, onTrayQuit } from '@/apis/invoke'
 import { useConfigStore } from '@/stores/appConfig'
@@ -14,16 +14,13 @@ import { useInstallQueueStore } from '@/stores/installQueue'
 import { useSearchStore } from '@/stores/global'
 import searchIcon from '@/assets/icons/searchIcon.svg'
 import cleanIcon from '@/assets/icons/clean.svg'
-import download from '@/assets/icons/download.svg'
-import downloadA from '@/assets/icons/downloadA.svg'
-import DownloadProgress from '@/components/DownloadProgress'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 /**
  * 标题栏组件
  * 处理窗口控制、搜索功能和下载管理
  */
-const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownload: boolean }) => {
+const Titlebar = ({ showSearch }: { showSearch: boolean}) => {
   /** 应用初始化状态 */
   const closeOrHide = useConfigStore((state) => state.closeOrHide)
   /** 当前安装任务 */
@@ -43,7 +40,7 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
   /** 窗口最大化状态 */
   const [isMaximized, setIsMaximized] = useState(false)
   /** 下载管理面板显示状态 */
-  const [hasDownloading, setHasDownloading] = useState(false)
+  // const [hasDownloading, setHasDownloading] = useState(false)
 
 
   /** 搜索框实时输入的关键词 */
@@ -63,12 +60,7 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
       console.error('Failed to toggle maximize:', error)
     }
   }
-  /**
-   * 监听当前安装任务变化，更新是否有下载中的应用标志
-   */
-  useEffect(() => {
-    setHasDownloading(currentTask !== null)
-  }, [currentTask])
+
   /**
    * 监听窗口状态变化
    * 初始化最大化状态并监听窗口大小变化
@@ -267,14 +259,14 @@ const Titlebar = ({ showSearch, showDownload }: { showSearch: boolean, showDownl
       {/* 右侧：下载管理和窗口控制按钮 */}
       <div className={styles.titlebarRight}>
         {/* 下载管理按钮（仅在初始化完成后显示） */}
-        {showDownload ? <Popover
+        {/* {showDownload ? <Popover
           trigger='click'
           title='下载管理'
           content={<DownloadProgress/>}>
           <span className={styles.title}>
             <img src={hasDownloading ? downloadA : download} alt="下载" />
           </span>
-        </Popover> : null}
+        </Popover> : null} */}
         {/* 窗口控制按钮 */}
         <span className={styles.title} onClick={handleMinimize}><Minus size={18} /></span>
         <span className={styles.title} onClick={handleFullscreen}>

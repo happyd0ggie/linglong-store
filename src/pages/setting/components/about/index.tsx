@@ -1,7 +1,7 @@
 import { Descriptions, Drawer, Form, FormProps, Input, Button, Checkbox, message } from 'antd'
 import styles from './index.module.scss'
 import feedback from '@/assets/icons/feedback.svg'
-import update from '@/assets/icons/update.svg'
+import upgradeApp from '@/assets/icons/upgradeApp.svg'
 import { useState, useEffect, useMemo } from 'react'
 import { getLlCliVersion } from '@/apis/invoke'
 import { getSearchAppList, suggest, uploadLog } from '@/apis/apps/index'
@@ -202,7 +202,7 @@ const AboutSoft = () => {
       <div className={styles.feedback}>
         <div className={styles.feed} onClick={feedbackClick}>  <img style={{ width: '1.1rem', height: '1.1rem' }} src={feedback} alt="意见反馈" /><span>意见反馈</span></div>
         {contextHolder}
-        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={update} alt="检查新版本" /><span>检查版本</span></div>
+        <div className={styles.checkVersion} onClick={checkVersionClick}><img style={{ width: '1.1rem', height: '1.1rem' }} src={upgradeApp} alt="检查新版本" /><span>检查版本</span></div>
       </div>
       <Drawer
         title="意见反馈"
@@ -222,16 +222,14 @@ const AboutSoft = () => {
           <Form.Item colon label="描述" name='description'>
             <TextArea rows={6} />
           </Form.Item>
-          <Form.Item colon label="" name="uploadLog" valuePropName="checked">
+          <Form.Item colon label="日志" name="uploadLog" valuePropName="checked">
             <Checkbox>上传日志</Checkbox>
           </Form.Item>
-          <Form.Item>
-            <div style={{ textAlign: 'right' }}>
-              <Button type="primary" htmlType="submit">
+          <div style={{ textAlign: 'right' }}>
+            <Button type="primary" htmlType="submit">
                 提交
-              </Button>
-            </div>
-          </Form.Item>
+            </Button>
+          </div>
         </Form>
       </Drawer>
     </div>

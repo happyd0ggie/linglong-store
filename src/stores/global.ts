@@ -38,6 +38,8 @@ export const useGlobalStore = create<Store.Global>((set) => ({
   // 匿名统计相关
   visitorId: '',
   clientIp: '',
+  // 自定义菜单类别
+  customMenuCategory: [],
   onInited: () => set(() => ({ isInited: true })),
   setArch: (value: string) => set(() => ({
     arch: value,
@@ -67,6 +69,7 @@ export const useGlobalStore = create<Store.Global>((set) => ({
   }),
   setVisitorId: (value: string) => set(() => ({ visitorId: value })),
   setClientIp: (value: string) => set(() => ({ clientIp: value })),
+  setCustomMenuCategory: (value: API.APP.CustomMenuCategory[]) => set(() => ({ customMenuCategory: value })),
 }))
 
 // /**

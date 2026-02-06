@@ -7,14 +7,12 @@ import { useGlobalInstallProgress } from '@/hooks/useGlobalInstallProgress'
 const Recommend = lazy(() => import('../pages/recommend'))
 const Ranking = lazy(() => import('../pages/ranking'))
 const AllApps = lazy(() => import('../pages/allApps'))
-const About = lazy(() => import('../pages/about'))
 const Setting = lazy(() => import('../pages/setting'))
-const Process = lazy(()=>import('../pages/process'))
 const UpdateApp = lazy(()=>import('../pages/updateApp'))
 const MyApplication = lazy(()=>import('../pages/myApps'))
 const AppDetail = lazy(()=>import('../pages/appDetail'))
 const SearchList = lazy(()=>import('../pages/searchList'))
-
+const CustomCategory = lazy(()=>import('../pages/customCategory'))
 // 路由配置
 const router = createBrowserRouter([
   {
@@ -34,16 +32,12 @@ const router = createBrowserRouter([
         element: <AllApps />,
       },
       {
-        path: '/about',
-        element: <About />,
+        path: '/custom_category/:code',
+        element: <CustomCategory />,
       },
       {
         path: '/setting',
         element: <Setting />,
-      },
-      {
-        path: '/process',
-        element: <Process />,
       },
       {
         path: '/update_apps',
