@@ -197,9 +197,10 @@ const ApplicationCard = ({
           </div>
           {
             type === 'recommend' && (<div className={styles.version}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
+              <Paragraph ellipsis={{ tooltip: appInfo.version || '版本', rows: 1, expandable: false }} style={{ fontSize: '12px' }}>
             版本: {appInfo.version || '-'}
-              </Text><Text type="secondary" style={{ fontSize: '12px', color: '#cda354' }}>
+              </Paragraph>
+              <Text type="secondary" style={{ width: '1.875rem', fontSize: '10px', color: '#cda354' }}>
             TOP
               </Text>
             </div>
