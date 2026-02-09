@@ -101,25 +101,6 @@ export const quitApp = async(): Promise<void> => {
 }
 
 /**
- * 监听托盘退出事件
- * @param callback - 退出请求回调函数
- * @returns Promise<UnlistenFn> 取消监听的函数
- *
- * @example
- * ```ts
- * const unlisten = await onTrayQuit(() => {
- *   console.log('User clicked quit from tray')
- *   // 执行确认逻辑
- * })
- * ```
- */
-export const onTrayQuit = async(
-  callback: () => void,
-): Promise<UnlistenFn> => {
-  return await listen('tray-quit', callback)
-}
-
-/**
  * 监听安装进度事件
  * @param callback - 进度更新回调函数
  * @returns Promise<UnlistenFn> 取消监听的函数

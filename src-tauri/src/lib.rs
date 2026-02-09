@@ -27,7 +27,6 @@ use services::linglong_env::{
     LinglongEnvCheckResult,
     InstallLinglongResult,
 };
-pub mod modules;
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -159,10 +158,6 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_zustand::init())
-        .setup(move |app| {
-            modules::tray::setup_tray(app.handle())?;
-            Ok(())
-        })
         .invoke_handler(tauri::generate_handler![
             greet,
             get_network_speed,

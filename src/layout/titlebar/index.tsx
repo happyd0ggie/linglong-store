@@ -8,8 +8,7 @@ import { SetStateAction, useCallback, useEffect, useState } from 'react'
 import { Close, Copy, Minus, Square } from '@icon-park/react'
 import { Modal, message } from 'antd'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { cancelInstall, quitApp, onTrayQuit } from '@/apis/invoke'
-import { useConfigStore } from '@/stores/appConfig'
+import { cancelInstall, quitApp } from '@/apis/invoke'
 import { useInstallQueueStore } from '@/stores/installQueue'
 import { useSearchStore } from '@/stores/global'
 import searchIcon from '@/assets/icons/searchIcon.svg'
@@ -21,8 +20,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
  * 处理窗口控制、搜索功能和下载管理
  */
 const Titlebar = ({ showSearch }: { showSearch: boolean}) => {
-  /** 应用初始化状态 */
-  const closeOrHide = useConfigStore((state) => state.closeOrHide)
   /** 当前安装任务 */
   const currentTask = useInstallQueueStore((state) => state.currentTask)
   /** 检查是否有正在进行的安装任务 */
@@ -120,29 +117,6 @@ const Titlebar = ({ showSearch }: { showSearch: boolean}) => {
   }, [hasActiveTasks, currentTask, clearQueue])
 
   /**
-   * 监听托盘退出事件
-   * 当用户点击托盘的"退出程序"时，触发统一的退出确认逻辑
-   */
-  useEffect(() => {
-    let unlisten: (() => void) | null = null
-
-    const setupTrayQuitListener = async() => {
-      unlisten = await onTrayQuit(() => {
-        console.info('[Titlebar] Tray quit event received')
-        handleQuit()
-      })
-    }
-
-    setupTrayQuitListener()
-
-    return () => {
-      if (unlisten) {
-        unlisten()
-      }
-    }
-  }, [handleQuit])
-
-  /**
    * 最小化窗口
    */
   const handleMinimize = async() => {
@@ -155,18 +129,11 @@ const Titlebar = ({ showSearch }: { showSearch: boolean}) => {
 
   /**
    * 关闭窗口
-   * 如果是退出应用且有安装任务，需要确认是否取消安装后退出
+   * 退出应用，如有安装任务先确认是否取消
    */
   const handleClose = async() => {
     try {
-      // 隐藏到托盘时直接隐藏，不检查安装任务
-      if (closeOrHide === 'hide') {
-        await appWindow.hide()
-        return
-      }
-
-      // 退出应用，执行统一的退出确认逻辑
-      handleQuit()
+      await handleQuit()
     } catch (error) {
       console.error('Failed to close:', error)
     }

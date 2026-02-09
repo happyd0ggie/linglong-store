@@ -1,6 +1,6 @@
 # Copilot Instructions — Linglong 管理桌面应用（Linux）
 
-本文件为 GitHub Copilot 的仓库级说明，帮助 Copilot 和贡献者在本项目中生成更贴合的代码。请严格遵循下列约定与约束。
+本文件为仓库级说明，帮助 Copilot 和贡献者在本项目中生成更贴合的代码。请严格遵循下列约定与约束。
 
 ## 概述
 

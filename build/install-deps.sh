@@ -38,12 +38,6 @@ sudo apt-get install -y \
   libwebkit2gtk-4.1-dev \
   libjavascriptcoregtk-4.1-dev
 
-echo "==> 安装系统托盘 AppIndicator 相关库..."
-sudo apt-get install -y \
-  libayatana-appindicator3-1 \
-  libayatana-appindicator3-dev \
-  libappindicator3-1
-
 echo "==> （可选）安装无障碍 AT-SPI 总线，消除 AT-SPI 警告..."
 sudo apt-get install -y \
   at-spi2-core
@@ -56,7 +50,6 @@ sudo apt-get install -y \
   libssl-dev \
   libgtk-3-dev \
   libwebkit2gtk-4.1-dev \
-  libayatana-appindicator3-dev \
   librsvg2-dev \
   xdg-utils \
   patchelf \
