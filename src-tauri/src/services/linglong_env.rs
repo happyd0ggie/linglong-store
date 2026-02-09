@@ -32,6 +32,7 @@ pub struct LinglongEnvCheckResult {
     pub ll_bin_version: Option<String>,
     pub repo_name: Option<String>,
     pub repos: Vec<LinglongRepo>,
+    pub is_container: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -356,6 +357,11 @@ pub async fn check_linglong_env(min_version: &str) -> Result<LinglongEnvCheckRes
         result.reason = Some("无法检测到玲珑环境版本，请确认已安装".to_string());
         return Ok(result);
     }
+
+    // 检测容器环境变量
+    result.is_container = std::env::var("LINYAPS_CONTAINER")
+        .map(|v| v == "yes")
+        .unwrap_or(false);
 
     result.ok = true;
     Ok(result)

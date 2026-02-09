@@ -23,6 +23,15 @@
     "core:event:default",
     "os:default",
     "os:allow-arch",
-    "log:default"
+    "log:default",
+    "fs:default",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        {
+          "path": "$HOME/.local/share/com.dongpl.linglong-store.v2/logs/linglong-store.log"
+        }
+      ]
+    }
   ]
 }

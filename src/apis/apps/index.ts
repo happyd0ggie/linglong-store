@@ -1,4 +1,4 @@
-import { get, post } from '..'
+import { get, post, upload } from '..'
 
 /**
  * 获取应用分类列表
@@ -143,6 +143,15 @@ export const appLogin = (data: API.APP.AppLoginSaveVO) => {
  */
 export const suggest = (data: API.APP.AppLoginSaveBO) => {
   return post<API.Common.BaseResponse<string>>('/web/suggest', data)
+}
+
+/**
+ * 上传反馈日志
+ * @param file 日志文件
+ * @returns 日志下载链接
+ */
+export const uploadLog = (file: File) => {
+  return upload<API.Common.BaseResponse<string>>('/app/uploadLog', file)
 }
 
 /**

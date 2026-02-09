@@ -51,6 +51,7 @@ export const useLinglongEnv = () => {
         repos: res.repos || [],
         envReady: res.ok,
         reason: res.reason,
+        isContainer: res.isContainer || false,
       })
       if (res.arch) {
         setArch(res.arch)
