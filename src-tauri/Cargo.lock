@@ -2134,7 +2134,7 @@ dependencies = [
 
 [[package]]
 name = "linglong-store"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "libc",
  "log",
