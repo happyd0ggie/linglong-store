@@ -26,3 +26,6 @@ linglong-docs
 src/pages/about/index.tsx
 target/rust-analyzer/flycheck0/stdout
 target/rust-analyzer/flycheck0/stderr
+
+tools/*/.env
+tools/github2gitee/.sync-temp
